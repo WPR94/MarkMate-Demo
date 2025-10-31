@@ -4,7 +4,6 @@ import toast, { Toaster } from 'react-hot-toast';
 
 import { grammarIssues, strengthTemplates, improvementTemplates, readabilityDescriptions } from '../utils/feedbackUtils';
 import { gcseEnglishRubric, generateRubricScores, RubricScore } from '../utils/rubricUtils';
-import { supabase } from '../lib/supabaseClient';
 
 interface FeedbackType {
   grammar: string[];
@@ -136,8 +135,7 @@ function Demo() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [overallScore, setOverallScore] = useState<number | null>(null);
-  const [criteriaMatches, setCriteriaMatches] = useState<Array<{ criterion: string; examples: string[] }>>([]);
+  
 
   // Map scores (0-10) to Tailwind width classes to avoid inline styles
   const widthPercentClasses = [
@@ -191,7 +189,7 @@ function Demo() {
     }
   };
 
-  const generateFeedback = async () => {
+  const generateFeedback = () => {
     if (!essayText.trim()) {
       setError('Please enter or upload an essay first.');
       toast.error('Please enter or upload an essay first.');
@@ -211,79 +209,10 @@ function Demo() {
       setRubricMatches(matches);
     }
 
-    try {
-      const criteriaArray = rubric.map(r => r.description);
-      const { data, error: fnError } = await supabase.functions.invoke('generate-feedback', {
-        body: { essay: essayText, rubric: { criteria: criteriaArray } }
-      });
-      if (fnError) throw fnError;
-
-      // Compute local readability/tone, then merge core fields with AI
-      const mock = generateMockFeedback(essayText);
-      const ai = (data ?? {}) as {
-        grammar_issues?: string[];
-        strengths?: string[];
-        improvements?: string[];
-        criteria_matches?: Array<{ criterion: string; examples: string[] }>;
-        suggested_feedback?: string;
-        overall_score?: number;
-      };
-
-      const merged: FeedbackType = {
-        ...mock,
-        grammar: ai.grammar_issues ?? mock.grammar,
-        strengths: ai.strengths ?? mock.strengths,
-        improvements: ai.improvements ?? mock.improvements,
-        suggestedFeedback: ai.suggested_feedback ?? mock.suggestedFeedback,
-      };
-
-      setFeedback(merged);
-      setOverallScore(typeof ai.overall_score === 'number' ? ai.overall_score : null);
-      setCriteriaMatches(ai.criteria_matches ?? []);
-
-      // Attempt to persist essay and feedback if the user is authenticated
-      try {
-        const { data: userData } = await supabase.auth.getUser();
-        const userId = userData?.user?.id;
-        if (userId) {
-          const wordCount = essayText.trim().split(/\s+/).filter(Boolean).length;
-          const { data: essayInsert, error: essayErr } = await supabase
-            .from('essays')
-            .insert([
-              {
-                title: 'Untitled Essay',
-                content: essayText,
-                word_count: wordCount,
-                teacher_id: userId,
-                rubric_id: null,
-              },
-            ])
-            .select('id')
-            .single();
-
-          if (essayErr) throw essayErr;
-
-          const essayId = essayInsert?.id;
-          if (essayId) {
-            const { error: fbErr } = await supabase.from('feedback').insert([
-              {
-                essay_id: essayId,
-                rubric_id: null,
-                grammar_issues: merged.grammar,
-                strengths: merged.strengths,
-                improvements: merged.improvements,
-                suggested_feedback: merged.suggestedFeedback,
-                overall_score: typeof ai.overall_score === 'number' ? ai.overall_score : null,
-              },
-            ]);
-            if (fbErr) throw fbErr;
-            toast.success('Saved to your library');
-          }
-        }
-      } catch (saveErr) {
-        // Non-blocking: still show feedback even if save fails (likely due to auth or RLS)
-        console.warn('Save skipped or failed:', saveErr);
-      }
+    // Demo mode: simulate analysis delay and generate local mock feedback
+    setTimeout(() => {
+      const mockFeedback = generateMockFeedback(essayText);
+      setFeedback(mockFeedback);
       setLoading(false);
       toast.success('Feedback generated successfully!', { id: 'analyzing' });
 
@@ -294,12 +223,7 @@ function Demo() {
           feedbackElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }, 100);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to generate feedback. Please try again.');
-      toast.error('Failed to generate feedback.');
-      setLoading(false);
-    }
+    }, 1500);
   };
 
   // Add slide-up animation with stagger effect
@@ -538,25 +462,7 @@ return (
             </div>
           </div>
 
-            {/* AI Overall Score */}
-            {overallScore !== null && (
-              <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-sky-500 slide-up slide-up-delay-2">
-                <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                  <span>🤖</span> AI Overall Score
-                </h2>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-3xl font-bold text-sky-700">{overallScore}</span>
-                  <span className="text-gray-600 text-sm">out of 100</span>
-                </div>
-                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                      overallScore >= 70 ? 'bg-green-500' : overallScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                    } ${widthClassFromScore(Math.round(overallScore / 10))}`}
-                  />
-                </div>
-              </div>
-            )}
+            {/* AI Overall Score (removed for demo) */}
 
           {/* Rubric Assessment */}
           <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-indigo-500 slide-up slide-up-delay-2">
@@ -603,26 +509,7 @@ return (
             </div>
           </div>
 
-          {/* Criteria Matches (AI) */}
-          {criteriaMatches && criteriaMatches.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-emerald-500 slide-up slide-up-delay-3">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <span>🔎</span> Criteria Matches (AI)
-              </h2>
-              <div className="space-y-4">
-                {criteriaMatches.map((cm, idx) => (
-                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-800 mb-2">{cm.criterion}</h3>
-                    <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                      {cm.examples.map((ex, i) => (
-                        <li key={i}>{ex}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Criteria Matches (AI) removed for demo */}
 
           {/* Main Feedback Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
