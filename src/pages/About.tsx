@@ -38,7 +38,7 @@ export default function About() {
         learning — not fighting marking fatigue."
       </p>
       <div className="mt-8 text-sm text-gray-600">
-        <p>🌐 <strong>Demo:</strong> <a href="https://markmate.vercel.app" className="text-blue-600 underline">https://markmate.vercel.app</a></p>
+  <p>🌐 <strong>Demo:</strong> <a href="https://markmate-mvpwpr.vercel.app" className="text-blue-600 underline">https://markmate-mvpwpr.vercel.app</a></p>
         <p>📂 <strong>GitHub:</strong> <a href="https://github.com/WPR94/MarkMate-Demo" className="text-blue-600 underline">GitHub Repository</a></p>
         <p>📧 <strong>Email:</strong> markmate.ai@gmail.com</p>
       </div>
