@@ -28,7 +28,7 @@ function Landing() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#3B82F6', color: 'white', padding: '1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="min-h-screen bg-blue-500 text-white p-4 text-center flex flex-col items-center justify-center">
         <h2>Loading...</h2>
       </div>
     );

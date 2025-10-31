@@ -1,10 +1,8 @@
-import React from "react";
-
 // Simple Rubriq logo: rubric grid + checkmark icon and wordmark
 // Colors: Deep Blue #1E3A8A, Gold #FBBF24, White
 export default function Logo({ className = "h-10" }: { className?: string }) {
   return (
-    <div className={`inline-flex items-center gap-3 ${className}`} style={{ fontFamily: 'Poppins, ui-sans-serif, system-ui, -apple-system' }}>
+    <div className={`inline-flex items-center gap-3 font-['Poppins'] ${className}`}>
       <svg
         width="40"
         height="40"
@@ -21,7 +19,7 @@ export default function Logo({ className = "h-10" }: { className?: string }) {
         {/* Gold checkmark at top-right */}
         <path d="M24 26 l4 4 l8 -10" stroke="#FBBF24" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <span style={{ color: '#1E3A8A', fontWeight: 600, fontSize: '1.125rem', lineHeight: 1 }}>
+      <span className="text-[#1E3A8A] font-semibold text-lg leading-none">
         simple rubriq
       </span>
     </div>
