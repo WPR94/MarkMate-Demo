@@ -5,7 +5,6 @@ import Logo from '../components/Logo';
 
 function Landing() {
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkConnection() {
@@ -14,11 +13,12 @@ function Landing() {
         const { data, error } = await supabase.auth.getSession();
         console.log('Supabase connection check:', { data, error });
         
-        if (error) throw error;
+        // Don't block on Supabase errors - just log them
+        if (error) console.warn('Supabase check failed (non-blocking):', error);
         setIsLoading(false);
       } catch (e) {
-        console.error('Supabase connection error:', e);
-        setError(e instanceof Error ? e.message : 'Failed to connect to Supabase');
+        console.error('Supabase connection error (non-blocking):', e);
+        // Don't show error - just continue loading the page
         setIsLoading(false);
       }
     }
@@ -30,15 +30,6 @@ function Landing() {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#3B82F6', color: 'white', padding: '1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h2>Loading...</h2>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#3B82F6', color: 'white', padding: '1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h2>Connection Error</h2>
-        <p>{error}</p>
       </div>
     );
   }
