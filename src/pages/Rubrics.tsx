@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 interface Criterion {
   id: number;
@@ -6,22 +9,46 @@ interface Criterion {
   maxPoints: number;
 }
 
-interface Rubric {
-  id: number;
-  subject: string;
+interface RubricRow {
+  id: string; // uuid
+  subject: string | null;
   name: string;
-  description: string;
-  criteria: Criterion[];
-  isDefault: boolean;
+  description?: string | null;
+  criteria: any; // jsonb
+  isDefault?: boolean;
+  created_at?: string;
 }
 
 function Rubrics() {
-  const [rubrics, setRubrics] = useState<Rubric[]>([]);
+  const { user } = useAuth();
+  const [rubrics, setRubrics] = useState<RubricRow[]>([]);
   const [subject, setSubject] = useState('English');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [criteria, setCriteria] = useState<Criterion[]>([{ id: 0, category: '', maxPoints: 10 }]);
   const [isDefault, setIsDefault] = useState(false);
+
+  const criteriaJson = useMemo(() => (
+    criteria.map(c => ({ category: c.category, maxPoints: c.maxPoints }))
+  ), [criteria]);
+
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('rubrics')
+        .select('id, name, subject, criteria, created_at')
+        .eq('teacher_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error(error);
+        toast.error('Failed to load rubrics');
+      } else {
+        setRubrics(data as RubricRow[]);
+      }
+    };
+    load();
+  }, [user]);
 
   const handleCriterionChange = (idx: number, field: keyof Criterion, value: string | number) => {
     setCriteria(prev => prev.map(c => (c.id === idx ? { ...c, [field]: field === 'maxPoints' ? Number(value) : value } : c)));
@@ -44,23 +71,38 @@ function Rubrics() {
     setIsDefault(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newRubric: Rubric = {
-      id: Date.now(),
-      subject,
-      name,
-      description,
-      criteria,
-      isDefault,
-    };
-    setRubrics(prev => [...prev, newRubric]);
+    if (!user) {
+      toast.error('Please sign in to save rubrics');
+      return;
+    }
+    const { data, error } = await supabase
+      .from('rubrics')
+      .insert([
+        {
+          name,
+          subject,
+          criteria: criteriaJson,
+          teacher_id: user.id,
+        },
+      ])
+      .select('id, name, subject, criteria, created_at')
+      .single();
+    if (error) {
+      console.error(error);
+      toast.error('Failed to save rubric');
+      return;
+    }
+    setRubrics(prev => [data as RubricRow, ...prev]);
+    toast.success('Rubric saved');
     resetForm();
   };
 
-  const handleDelete = (id: number) => {
-    setRubrics(prev => prev.filter(r => r.id !== id));
-  };
+  // Placeholder delete (not wired yet)
+  // const handleDelete = (id: string) => {
+  //   setRubrics(prev => prev.filter(r => r.id !== id));
+  // };
 
   return (
     <div className="p-4 max-w-5xl mx-auto">
@@ -69,7 +111,7 @@ function Rubrics() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-semibold mb-1">Subject</label>
-            <select value={subject} onChange={e => setSubject(e.target.value)} className="border p-2 w-full">
+            <select aria-label="Subject" value={subject} onChange={e => setSubject(e.target.value)} className="border p-2 w-full">
               <option>English</option>
               <option>Math</option>
               <option>Science</option>
@@ -94,7 +136,7 @@ function Rubrics() {
         </div>
         <div>
           <label className="block font-semibold mb-2">Criteria</label>
-          {criteria.map((c, index) => (
+          {criteria.map((c) => (
             <div key={c.id} className="flex flex-col sm:flex-row gap-2 mb-2 items-center">
               <input
                 className="border p-2 flex-1"
@@ -103,7 +145,9 @@ function Rubrics() {
                 onChange={e => handleCriterionChange(c.id, 'category', e.target.value)}
                 required
               />
+              <label className="sr-only" htmlFor={`maxPoints-${c.id}`}>Max points</label>
               <input
+                id={`maxPoints-${c.id}`}
                 className="border p-2 w-24"
                 type="number"
                 min="1"
@@ -112,7 +156,7 @@ function Rubrics() {
                 required
               />
               {criteria.length > 1 && (
-                <button type="button" onClick={() => removeCriterion(c.id)} className="text-red-600">
+                <button type="button" aria-label="Remove criterion" onClick={() => removeCriterion(c.id)} className="text-red-600">
                   Remove
                 </button>
               )}
@@ -126,18 +170,19 @@ function Rubrics() {
         </div>
         <button type="submit" className="bg-green-600 text-white py-2 px-4 rounded">Save Rubric</button>
       </form>
-      <h3 className="text-xl font-bold mb-2">Existing Rubrics</h3>
+      <h3 className="text-xl font-bold mb-2">Your Rubrics</h3>
       <div className="space-y-4">
-        {rubrics.map(rubric => (
-          <div key={rubric.id} className="border p-4 rounded bg-white shadow-sm">
-            <h4 className="font-semibold text-lg">{rubric.name} ({rubric.subject}) {rubric.isDefault && <span className="text-sm text-blue-600">[Default]</span>}</h4>
-            {rubric.description && <p className="text-gray-600">{rubric.description}</p>}
-            <ul className="list-disc pl-5 mt-2">
-              {rubric.criteria.map(c => (
-                <li key={c.id}>{c.category} — {c.maxPoints} pts</li>
-              ))}
-            </ul>
-            <button onClick={() => handleDelete(rubric.id)} className="text-red-600 mt-2">Delete</button>
+        {rubrics.map(r => (
+          <div key={r.id} className="border p-4 rounded bg-white shadow-sm">
+            <h4 className="font-semibold text-lg">{r.name} {r.subject ? `(${r.subject})` : ''}</h4>
+            {Array.isArray(r.criteria) && (
+              <ul className="list-disc pl-5 mt-2">
+                {r.criteria.map((c: any, idx: number) => (
+                  <li key={idx}>{c.category} — {c.maxPoints} pts</li>
+                ))}
+              </ul>
+            )}
+            {/* Optional: add delete wired to Supabase later */}
           </div>
         ))}
         {rubrics.length === 0 && <p className="text-gray-500">No rubrics created yet.</p>}
