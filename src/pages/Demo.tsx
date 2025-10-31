@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import Tesseract from 'tesseract.js';
 import toast, { Toaster } from 'react-hot-toast';
 
-import { grammarIssues, strengthTemplates, improvementTemplates, toneClassifications, readabilityDescriptions } from '../utils/feedbackUtils';
+import { grammarIssues, strengthTemplates, improvementTemplates, readabilityDescriptions } from '../utils/feedbackUtils';
 import { gcseEnglishRubric, generateRubricScores, RubricScore } from '../utils/rubricUtils';
 
 interface FeedbackType {
@@ -135,6 +135,13 @@ function Demo() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Map scores (0-10) to Tailwind width classes to avoid inline styles
+  const widthPercentClasses = [
+    'w-[0%]','w-[10%]','w-[20%]','w-[30%]','w-[40%]','w-[50%]',
+    'w-[60%]','w-[70%]','w-[80%]','w-[90%]','w-[100%]'
+  ];
+  const widthClassFromScore = (score: number) => widthPercentClasses[Math.max(0, Math.min(10, Math.round(score)))];
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEssayText(e.target.value);
@@ -348,18 +355,21 @@ return (
 
       {/* Upload and Scan Buttons */}
       <div className="flex flex-wrap gap-4 mb-8">
+        <label htmlFor="upload-file-input" className="sr-only">Upload essay file</label>
         <input
           type="file"
           ref={fileInputRef}
           accept=".txt,.docx,.pdf"
+          id="upload-file-input"
           onChange={handleFileUpload}
           className="hidden"
         />
+        <label htmlFor="scan-image-input" className="sr-only">Scan essay image</label>
         <input
           type="file"
           ref={cameraInputRef}
           accept="image/*"
-          capture="environment"
+          id="scan-image-input"
           onChange={handleOCRScan}
           className="hidden"
         />
@@ -436,8 +446,7 @@ return (
                           : feedback.readabilityScore <= 6 
                             ? 'bg-yellow-500' 
                             : 'bg-green-500'
-                      }`}
-                      style={{ width: `${(feedback.readabilityScore / 10) * 100}%` }}
+                      } ${widthClassFromScore(feedback.readabilityScore)}`}
                     />
                   </div>
                 </div>
@@ -492,8 +501,7 @@ return (
                             : score.score >= 4 
                               ? 'bg-yellow-500' 
                               : 'bg-red-500'
-                        }`}
-                        style={{ width: `${(score.score / 10) * 100}%` }}
+                        } ${widthClassFromScore(score.score)}`}
                       />
                     </div>
                     <p className="text-sm text-gray-700 italic">{score.feedback}</p>
