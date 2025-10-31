@@ -240,6 +240,50 @@ function Demo() {
       setFeedback(merged);
       setOverallScore(typeof ai.overall_score === 'number' ? ai.overall_score : null);
       setCriteriaMatches(ai.criteria_matches ?? []);
+
+      // Attempt to persist essay and feedback if the user is authenticated
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (userId) {
+          const wordCount = essayText.trim().split(/\s+/).filter(Boolean).length;
+          const { data: essayInsert, error: essayErr } = await supabase
+            .from('essays')
+            .insert([
+              {
+                title: 'Untitled Essay',
+                content: essayText,
+                word_count: wordCount,
+                teacher_id: userId,
+                rubric_id: null,
+              },
+            ])
+            .select('id')
+            .single();
+
+          if (essayErr) throw essayErr;
+
+          const essayId = essayInsert?.id;
+          if (essayId) {
+            const { error: fbErr } = await supabase.from('feedback').insert([
+              {
+                essay_id: essayId,
+                rubric_id: null,
+                grammar_issues: merged.grammar,
+                strengths: merged.strengths,
+                improvements: merged.improvements,
+                suggested_feedback: merged.suggestedFeedback,
+                overall_score: typeof ai.overall_score === 'number' ? ai.overall_score : null,
+              },
+            ]);
+            if (fbErr) throw fbErr;
+            toast.success('Saved to your library');
+          }
+        }
+      } catch (saveErr) {
+        // Non-blocking: still show feedback even if save fails (likely due to auth or RLS)
+        console.warn('Save skipped or failed:', saveErr);
+      }
       setLoading(false);
       toast.success('Feedback generated successfully!', { id: 'analyzing' });
 
