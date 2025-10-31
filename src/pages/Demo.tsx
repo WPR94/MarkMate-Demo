@@ -253,6 +253,45 @@ const slideUpAnimation = `
   .fade-in { opacity: 0; animation: fadeIn 0.6s ease-out 0.2s forwards; }
 `;
 
+  // Rotating thank-you messages for feedback toast
+  const feedbackMessages = [
+    'Thanks for supporting Simple Rubriq 💛 Your voice helps us improve!',
+    'Thank you for helping us make marking smarter 💡',
+  ];
+
+  const FEEDBACK_FORM_URL = 'https://forms.cloud.microsoft/r/9bCiPYFz2c';
+
+  const handleFeedbackClick = () => {
+    // Show a warm, animated toast (link opens via anchor target)
+    const msg = feedbackMessages[Math.floor(Math.random() * feedbackMessages.length)];
+
+    toast.custom(
+      (t) => (
+        <div
+          className={[
+            'pointer-events-auto',
+            'bg-gradient-to-r from-amber-400 to-amber-200',
+            'text-white shadow-lg rounded-lg',
+            'px-4 py-3',
+            'flex items-center gap-2',
+            'max-w-xs sm:max-w-sm',
+            'transition-all duration-300',
+            t.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2',
+          ].join(' ')}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="text-lg">✅</span>
+          <span className="text-sm sm:text-base font-semibold">{msg}</span>
+        </div>
+      ),
+      {
+        duration: 4500,
+        position: 'bottom-right',
+      }
+    );
+  };
+
 return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-12">
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
@@ -601,9 +640,10 @@ return (
                 Thank you for testing Simple Rubriq! Your feedback helps us make marking smarter and more supportive for teachers everywhere.
               </p>
               <a
-                href="https://forms.cloud.microsoft/r/9bCiPYFz2c"
+                href={FEEDBACK_FORM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={handleFeedbackClick}
                 className="inline-flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-[#1E40AF] text-white font-bold px-5 py-2.5 rounded-lg transition-colors duration-200"
               >
                 <span>🙏</span>
