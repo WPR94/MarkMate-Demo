@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import logo from '../assets/logo.png';
+import Logo from '../components/Logo';
 
 function Landing() {
   const [isLoading, setIsLoading] = useState(true);
@@ -49,18 +49,18 @@ function Landing() {
       <nav className="w-full bg-blue-600 shadow-lg">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="inline-flex items-center">
-            <div className="h-10 flex items-center cursor-pointer">
-              <img 
-                src={logo} 
-                alt="MarkMate Logo" 
-                className="h-10 object-contain"
-              />
-            </div>
+          <Link to="/" className="inline-flex items-center" aria-label="Simple Rubriq Home">
+            <Logo className="h-10" />
           </Link>
 
           {/* Navigation Buttons */}
           <div className="flex items-center space-x-4">
+            <Link 
+              to="/about" 
+              className="px-4 py-2 text-white hover:text-blue-100 font-medium transition-colors duration-200"
+            >
+              About
+            </Link>
             <Link 
               to="/demo" 
               className="px-4 py-2 text-white hover:text-blue-100 font-medium transition-colors duration-200"
@@ -82,8 +82,8 @@ function Landing() {
         <div className="max-w-3xl w-full px-4">
           {/* New tagline + supporting subtext (centered, responsive) */}
         <header className="mb-6">
-          <h1 className="text-4xl md:text-5xl font-bold text-center">Mark smarter, not harder.</h1>
-          <p className="mt-3 text-center text-gray-200 max-w-2xl mx-auto">Get instant AI-powered feedback on student writing — with support for every subject coming soon.</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-center">Simplify grading. Amplify teaching.</h1>
+          <p className="mt-3 text-center text-gray-200 max-w-2xl mx-auto">AI-powered rubric grading assistance that keeps feedback structured, fair, and fast.</p>
         </header>
 
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8 max-w-2xl mx-auto">
@@ -91,7 +91,7 @@ function Landing() {
             <span>🎓</span> How it works
           </h2>
           <p className="text-white/90 leading-relaxed">
-            This demo shows how MarkMate grades essays using your rubric criteria.
+            This demo shows how Simple Rubriq grades essays using your rubric criteria.
             Paste your marking scheme, upload or write a sample essay, and get instant feedback.
           </p>
         </div>
@@ -107,7 +107,7 @@ function Landing() {
       <footer className="py-8 bg-blue-600">
         <div className="container mx-auto px-6">
           <div className="flex flex-col items-center space-y-4">
-            <p className="text-white/90">© 2025 MarkMate. Built with ❤️ for teachers.</p>
+            <p className="text-white/90">© 2025 Simple Rubriq. Built with ❤️ for teachers.</p>
             <div className="flex items-center space-x-4 text-sm">
               <a href="#" className="text-white/80 hover:text-white transition-colors">Privacy Policy</a>
               <span className="text-white/40">|</span>

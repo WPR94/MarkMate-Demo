@@ -1,7 +1,8 @@
 {
-  "name": "markmate-local",
+  "name": "simple-rubriq",
   "version": "0.1.0",
   "private": true,
+  "description": "AI-powered rubric grading assistant for teachers — Simplify grading. Amplify teaching.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

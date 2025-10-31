@@ -8,6 +8,7 @@ import Rubrics from './pages/Rubrics';
 import Analytics from './pages/Analytics';
 import BatchProcessor from './pages/BatchProcessor';
 import Demo from './pages/Demo';
+import About from './pages/About';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/batch" element={<BatchProcessor />} />
       <Route path="/demo" element={<Demo />} />
+      <Route path="/about" element={<About />} />
     </Routes>
   );
 }
