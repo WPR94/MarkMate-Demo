@@ -4,6 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 
 import { grammarIssues, strengthTemplates, improvementTemplates, readabilityDescriptions } from '../utils/feedbackUtils';
 import { gcseEnglishRubric, generateRubricScores, RubricScore } from '../utils/rubricUtils';
+import { supabase } from '../lib/supabaseClient';
 
 interface FeedbackType {
   grammar: string[];
@@ -135,6 +136,8 @@ function Demo() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [overallScore, setOverallScore] = useState<number | null>(null);
+  const [criteriaMatches, setCriteriaMatches] = useState<Array<{ criterion: string; examples: string[] }>>([]);
 
   // Map scores (0-10) to Tailwind width classes to avoid inline styles
   const widthPercentClasses = [
@@ -188,7 +191,7 @@ function Demo() {
     }
   };
 
-  const generateFeedback = () => {
+  const generateFeedback = async () => {
     if (!essayText.trim()) {
       setError('Please enter or upload an essay first.');
       toast.error('Please enter or upload an essay first.');
@@ -208,26 +211,51 @@ function Demo() {
       setRubricMatches(matches);
     }
 
-    // Simulate API delay
-    setTimeout(() => {
-      const mockFeedback = generateMockFeedback(essayText);
-      setFeedback(mockFeedback);
-      setLoading(false);
-      toast.success('Feedback generated successfully!', {
-        id: 'analyzing'
+    try {
+      const criteriaArray = rubric.map(r => r.description);
+      const { data, error: fnError } = await supabase.functions.invoke('generate-feedback', {
+        body: { essay: essayText, rubric: { criteria: criteriaArray } }
       });
-      
+      if (fnError) throw fnError;
+
+      // Compute local readability/tone, then merge core fields with AI
+      const mock = generateMockFeedback(essayText);
+      const ai = (data ?? {}) as {
+        grammar_issues?: string[];
+        strengths?: string[];
+        improvements?: string[];
+        criteria_matches?: Array<{ criterion: string; examples: string[] }>;
+        suggested_feedback?: string;
+        overall_score?: number;
+      };
+
+      const merged: FeedbackType = {
+        ...mock,
+        grammar: ai.grammar_issues ?? mock.grammar,
+        strengths: ai.strengths ?? mock.strengths,
+        improvements: ai.improvements ?? mock.improvements,
+        suggestedFeedback: ai.suggested_feedback ?? mock.suggestedFeedback,
+      };
+
+      setFeedback(merged);
+      setOverallScore(typeof ai.overall_score === 'number' ? ai.overall_score : null);
+      setCriteriaMatches(ai.criteria_matches ?? []);
+      setLoading(false);
+      toast.success('Feedback generated successfully!', { id: 'analyzing' });
+
       // Smooth scroll to the feedback section after it's generated
       setTimeout(() => {
         const feedbackElement = document.querySelector('.space-y-8');
         if (feedbackElement) {
-          feedbackElement.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
-          });
+          feedbackElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 100); // Small delay to ensure the feedback is rendered
-    }, 1500);
+      }, 100);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to generate feedback. Please try again.');
+      toast.error('Failed to generate feedback.');
+      setLoading(false);
+    }
   };
 
   // Add slide-up animation with stagger effect
@@ -466,6 +494,26 @@ return (
             </div>
           </div>
 
+            {/* AI Overall Score */}
+            {overallScore !== null && (
+              <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-sky-500 slide-up slide-up-delay-2">
+                <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                  <span>🤖</span> AI Overall Score
+                </h2>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-3xl font-bold text-sky-700">{overallScore}</span>
+                  <span className="text-gray-600 text-sm">out of 100</span>
+                </div>
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                      overallScore >= 70 ? 'bg-green-500' : overallScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                    } ${widthClassFromScore(Math.round(overallScore / 10))}`}
+                  />
+                </div>
+              </div>
+            )}
+
           {/* Rubric Assessment */}
           <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-indigo-500 slide-up slide-up-delay-2">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -510,6 +558,27 @@ return (
               })}
             </div>
           </div>
+
+          {/* Criteria Matches (AI) */}
+          {criteriaMatches && criteriaMatches.length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-emerald-500 slide-up slide-up-delay-3">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <span>🔎</span> Criteria Matches (AI)
+              </h2>
+              <div className="space-y-4">
+                {criteriaMatches.map((cm, idx) => (
+                  <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-800 mb-2">{cm.criterion}</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                      {cm.examples.map((ex, i) => (
+                        <li key={i}>{ex}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Main Feedback Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
