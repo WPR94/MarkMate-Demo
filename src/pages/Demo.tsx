@@ -244,6 +244,13 @@ const slideUpAnimation = `
   .slide-up-delay-3 { animation-delay: 0.3s; }
   .slide-up-delay-4 { animation-delay: 0.4s; }
   .slide-up-delay-5 { animation-delay: 0.5s; }
+
+  /* Subtle fade-in animation for callouts */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { opacity: 0; animation: fadeIn 0.6s ease-out 0.2s forwards; }
 `;
 
 return (
@@ -582,6 +589,28 @@ return (
               </div>
             </div>
           )}
+
+          {/* Give Feedback Section */}
+          <section
+            aria-labelledby="give-feedback-heading"
+            className="mx-auto max-w-xl w-full text-center mt-10"
+          >
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200 fade-in">
+              <h2 id="give-feedback-heading" className="sr-only">Give Feedback</h2>
+              <p className="text-gray-700 mb-4">
+                Thank you for testing Simple Rubriq! Your feedback helps us make marking smarter and more supportive for teachers everywhere.
+              </p>
+              <a
+                href="https://forms.cloud.microsoft/r/9bCiPYFz2c"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 bg-[#1E3A8A] hover:bg-[#1E40AF] text-white font-bold px-5 py-2.5 rounded-lg transition-colors duration-200"
+              >
+                <span>🙏</span>
+                <span>Share Your Feedback</span>
+              </a>
+            </div>
+          </section>
 
           {/* Reset Demo Button */}
           <div className="flex justify-center pt-4 slide-up slide-up-delay-6">
