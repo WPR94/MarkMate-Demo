@@ -3,6 +3,7 @@
 // Deploy with: supabase functions deploy generate-feedback
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.4.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +32,41 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 
+  // Verify JWT authentication
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({ error: "Missing authorization header" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return new Response(
+      JSON.stringify({ error: "Server misconfiguration" }),
+      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -47,6 +83,24 @@ serve(async (req: Request): Promise<Response> => {
   if (typeof essay !== "string" || !criteria || criteria.length === 0) {
     return new Response(
       JSON.stringify({ error: "Missing 'essay' or 'rubric.criteria'" }),
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
+  // Basic input size validation (prevent abuse)
+  const MAX_ESSAY_LENGTH = 50000; // ~10k words
+  const MAX_CRITERIA = 50;
+  
+  if (essay.length > MAX_ESSAY_LENGTH) {
+    return new Response(
+      JSON.stringify({ error: `Essay too long (max ${MAX_ESSAY_LENGTH} characters)` }),
+      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+  
+  if (criteria.length > MAX_CRITERIA) {
+    return new Response(
+      JSON.stringify({ error: `Too many criteria (max ${MAX_CRITERIA})` }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
