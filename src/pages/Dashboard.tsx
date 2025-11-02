@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import notify from '../utils/notify';
 
 type DashboardStats = {
   essaysCount: number;
@@ -63,7 +63,7 @@ function Dashboard() {
         setRecentFeedback(recent);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
-        toast.error('Failed to load dashboard data');
+        notify.error('Failed to load dashboard data');
       } finally {
         setLoading(false);
       }

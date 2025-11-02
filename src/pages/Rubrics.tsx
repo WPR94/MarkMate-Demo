@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import notify from '../utils/notify';
 
 interface Criterion {
   id: number;
@@ -42,7 +42,7 @@ function Rubrics() {
         .order('created_at', { ascending: false });
       if (error) {
         console.error(error);
-        toast.error('Failed to load rubrics');
+        notify.error('Failed to load rubrics');
       } else {
         setRubrics(data as RubricRow[]);
       }
@@ -74,7 +74,7 @@ function Rubrics() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      toast.error('Please sign in to save rubrics');
+      notify.error('Please sign in to save rubrics');
       return;
     }
     const { data, error } = await supabase
@@ -91,11 +91,11 @@ function Rubrics() {
       .single();
     if (error) {
       console.error(error);
-      toast.error('Failed to save rubric');
+      notify.error('Failed to save rubric');
       return;
     }
     setRubrics(prev => [data as RubricRow, ...prev]);
-    toast.success('Rubric saved');
+    notify.success('Rubric saved');
     resetForm();
   };
 

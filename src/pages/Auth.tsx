@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import toast from 'react-hot-toast';
+import notify from '../utils/notify';
 import { useAuth } from '../contexts/AuthContext';
 
 function Auth() {
@@ -17,9 +17,9 @@ function Auth() {
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setError(error.message);
-      toast.error(error.message);
+      notify.error(error.message);
     } else {
-      toast.success('Check your email to confirm your account');
+      notify.success('Check your email to confirm your account');
     }
   };
 
@@ -27,9 +27,9 @@ function Auth() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
-      toast.error(error.message);
+      notify.error(error.message);
     } else {
-      toast.success('Signed in');
+      notify.success('Signed in');
     }
   };
 
@@ -69,7 +69,7 @@ function Auth() {
       {user && (
         <button
           className="mt-4 bg-gray-700 text-white py-2 px-4 rounded w-full max-w-sm"
-          onClick={async () => { await signOut(); toast.success('Signed out'); }}
+          onClick={async () => { await signOut(); notify.success('Signed out'); }}
         >
           Sign Out
         </button>

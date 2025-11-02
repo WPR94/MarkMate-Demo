@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import Tesseract from 'tesseract.js';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import notify from '../utils/notify';
 
 import { grammarIssues, strengthTemplates, improvementTemplates, readabilityDescriptions } from '../utils/feedbackUtils';
 import { gcseEnglishRubric, generateRubricScores, RubricScore } from '../utils/rubricUtils';
@@ -159,10 +160,10 @@ function Demo() {
     try {
       const text = await file.text();
       setEssayText(text);
-      toast.success('File uploaded successfully!');
+  notify.success('File uploaded successfully!');
     } catch (err) {
       setError('Failed to read file. Please try again.');
-      toast.error('Failed to read file. Please try again.');
+  notify.error('Failed to read file. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -179,10 +180,10 @@ function Demo() {
     try {
       const result = await Tesseract.recognize(file, 'eng');
       setEssayText(result.data.text);
-      toast.success('Image scanned successfully!');
+  notify.success('Image scanned successfully!');
     } catch (err) {
       setError('Failed to scan image. Please try again.');
-      toast.error('Failed to scan image. Please try again.');
+  notify.error('Failed to scan image. Please try again.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -192,13 +193,13 @@ function Demo() {
   const generateFeedback = () => {
     if (!essayText.trim()) {
       setError('Please enter or upload an essay first.');
-      toast.error('Please enter or upload an essay first.');
+  notify.error('Please enter or upload an essay first.');
       return;
     }
 
     setLoading(true);
     setError(null);
-    toast.loading('Analyzing your essay...', {
+    notify.loading('Analyzing your essay...', {
       id: 'analyzing',
       duration: 1500
     });
@@ -214,7 +215,7 @@ function Demo() {
       const mockFeedback = generateMockFeedback(essayText);
       setFeedback(mockFeedback);
       setLoading(false);
-      toast.success('Feedback generated successfully!', { id: 'analyzing' });
+  notify.success('Feedback generated successfully!', { id: 'analyzing' });
 
       // Smooth scroll to the feedback section after it's generated
       setTimeout(() => {
@@ -297,7 +298,7 @@ const slideUpAnimation = `
 
 return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-12">
-      <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+  {/* Global Toaster is already mounted in App.tsx */}
       <style>{slideUpAnimation}</style>
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Essay Feedback Demo</h1>
       
@@ -671,7 +672,7 @@ return (
                 setFeedback(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 if (cameraInputRef.current) cameraInputRef.current.value = '';
-                toast.success('Demo reset successfully!');
+                notify.success('Demo reset successfully!');
               }}
               className="text-gray-600 hover:text-gray-800 flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors duration-200"
             >
