@@ -8,6 +8,7 @@ import Rubrics from './pages/Rubrics';
 import Analytics from './pages/Analytics';
 import BatchProcessor from './pages/BatchProcessor';
 import Demo from './pages/Demo';
+import DashboardDemo from './pages/DashboardDemo';
 import About from './pages/About';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
@@ -30,6 +31,7 @@ function App() {
         </Route>
         {/* Public */}
         <Route path="/demo" element={<Demo />} />
+  <Route path="/dashboard-demo" element={<DashboardDemo />} />
         <Route path="/about" element={<About />} />
       </Routes>
     </>
