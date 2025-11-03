@@ -133,8 +133,16 @@ function Dashboard() {
 
             {/* Recent Activity */}
             <div className="bg-white rounded-lg shadow mb-8">
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-900">Recent Feedback</h3>
+                {recentFeedback.length > 0 && (
+                  <Link
+                    to="/feedback-history"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    View All →
+                  </Link>
+                )}
               </div>
               <div className="p-6">
                 {recentFeedback.length === 0 ? (

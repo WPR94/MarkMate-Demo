@@ -7,6 +7,7 @@ import Students from './pages/Students';
 import Rubrics from './pages/Rubrics';
 import Analytics from './pages/Analytics';
 import BatchProcessor from './pages/BatchProcessor';
+import FeedbackHistory from './pages/FeedbackHistory';
 import Demo from './pages/Demo';
 import DashboardDemo from './pages/DashboardDemo';
 import About from './pages/About';
@@ -24,6 +25,7 @@ function App() {
         <Route element={<ProtectedRoute />}> 
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/essay-feedback" element={<EssayFeedback />} />
+          <Route path="/feedback-history" element={<FeedbackHistory />} />
           <Route path="/students" element={<Students />} />
           <Route path="/rubrics" element={<Rubrics />} />
           <Route path="/analytics" element={<Analytics />} />
