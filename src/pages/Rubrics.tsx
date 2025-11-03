@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import notify from '../utils/notify';
+import { parseRubricFile, parseRubricText, criteriaToCriteriaState } from '../utils/rubricParser';
 
 interface Criterion {
   id: number;
@@ -27,6 +28,8 @@ function Rubrics() {
   const [description, setDescription] = useState('');
   const [criteria, setCriteria] = useState<Criterion[]>([{ id: 0, category: '', maxPoints: 10 }]);
   const [isDefault, setIsDefault] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const criteriaJson = useMemo(() => (
     criteria.map(c => ({ category: c.category, maxPoints: c.maxPoints }))
@@ -99,6 +102,46 @@ function Rubrics() {
     resetForm();
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      // Parse the file
+      const text = await parseRubricFile(file);
+      
+      // Parse text into structured criteria
+      const parsed = parseRubricText(text);
+      
+      if (parsed.length === 0) {
+        notify.error('No criteria found in file. Please check the format.');
+        return;
+      }
+
+      // Convert to form state
+      const newCriteria = criteriaToCriteriaState(parsed);
+      setCriteria(newCriteria);
+      
+      // Auto-fill name from filename if not set
+      if (!name) {
+        const baseName = file.name.replace(/\.(txt|docx|pdf)$/i, '');
+        setName(baseName);
+      }
+
+      notify.success(`Loaded ${parsed.length} criteria from ${file.name}`);
+    } catch (error) {
+      console.error('File upload error:', error);
+      notify.error(error instanceof Error ? error.message : 'Failed to parse rubric file');
+    } finally {
+      setUploading(false);
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Placeholder delete (not wired yet)
   // const handleDelete = (id: string) => {
   //   setRubrics(prev => prev.filter(r => r.id !== id));
@@ -108,6 +151,48 @@ function Rubrics() {
     <div className="p-4 max-w-5xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Rubrics Manager</h2>
       <form onSubmit={handleSubmit} className="border p-4 bg-gray-50 rounded mb-6 space-y-4">
+        {/* File Upload Section */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h3 className="font-semibold text-blue-900">Upload Rubric File</h3>
+              <p className="text-sm text-blue-700">Import criteria from .txt, .docx, or .pdf files</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center">
+            <label htmlFor="rubric-file-upload" className="sr-only">Upload rubric file</label>
+            <input
+              type="file"
+              id="rubric-file-upload"
+              ref={fileInputRef}
+              accept=".txt,.docx,.pdf"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {uploading ? (
+                <>
+                  <span className="animate-spin">⚡</span>
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <span>📄</span>
+                  <span>Choose File</span>
+                </>
+              )}
+            </button>
+            <p className="text-xs text-gray-600">
+              Supported formats: .txt, .docx (PDF coming soon)
+            </p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block font-semibold mb-1">Subject</label>
