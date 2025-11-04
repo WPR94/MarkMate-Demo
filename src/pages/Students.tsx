@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
@@ -19,6 +19,7 @@ function Students() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<Omit<Student, 'id'>>({
     name: '',
     email: '',
@@ -29,6 +30,7 @@ function Students() {
     notes: '',
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -172,6 +174,97 @@ function Students() {
     }
   };
 
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.csv')) {
+      notify.error('Please upload a CSV file');
+      return;
+    }
+    
+    try {
+      setImporting(true);
+      const text = await file.text();
+      const lines = text.trim().split(/\r?\n/);
+      
+      if (lines.length < 2) {
+        notify.error('CSV file is empty or invalid');
+        return;
+      }
+      
+      // Parse header
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const nameIndex = headers.findIndex(h => h === 'name');
+      const emailIndex = headers.findIndex(h => h === 'email');
+      const gradeIndex = headers.findIndex(h => h === 'grade' || h === 'grade level');
+      const sectionIndex = headers.findIndex(h => h.includes('section') || h.includes('class'));
+      const studentIdIndex = headers.findIndex(h => h.includes('student') && h.includes('id'));
+      const notesIndex = headers.findIndex(h => h === 'notes');
+      
+      if (nameIndex === -1 || emailIndex === -1) {
+        notify.error('CSV must have "name" and "email" columns');
+        return;
+      }
+      
+      // Parse rows
+      const studentsToImport = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim());
+        
+        if (cols.length < 2 || !cols[nameIndex] || !cols[emailIndex]) {
+          continue; // Skip invalid rows
+        }
+        
+        studentsToImport.push({
+          teacher_id: user!.id,
+          name: cols[nameIndex],
+          email: cols[emailIndex],
+          grade: gradeIndex !== -1 ? cols[gradeIndex] || '' : '',
+          class_section: sectionIndex !== -1 ? cols[sectionIndex] || '' : '',
+          student_id: studentIdIndex !== -1 ? cols[studentIdIndex] || '' : '',
+          active: true,
+          notes: notesIndex !== -1 ? cols[notesIndex] || '' : '',
+        });
+      }
+      
+      if (studentsToImport.length === 0) {
+        notify.error('No valid student records found in CSV');
+        return;
+      }
+      
+      // Bulk insert
+      const { data, error } = await supabase
+        .from('students')
+        .insert(studentsToImport)
+        .select();
+      
+      if (error) throw error;
+      
+      setStudents(prev => [...prev, ...(data || [])]);
+      notify.success(`Successfully imported ${studentsToImport.length} students`);
+    } catch (error: any) {
+      console.error('CSV import error:', error);
+      notify.error('Failed to import CSV: ' + (error.message || 'Unknown error'));
+    } finally {
+      setImporting(false);
+      if (csvInputRef.current) {
+        csvInputRef.current.value = '';
+      }
+    }
+  };
+
+  const downloadCsvTemplate = () => {
+    const template = 'name,email,grade,class section,student id,notes\nJohn Doe,john@example.com,10,A,S001,Good student\nJane Smith,jane@example.com,10,B,S002,';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'students_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -182,9 +275,36 @@ function Students() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Students Manager</h2>
-        <p className="text-gray-600 mt-1">Manage your students and track their essay submissions</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Students Manager</h2>
+          <p className="text-gray-600 mt-1">Manage your students and track their essay submissions</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={downloadCsvTemplate}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download CSV Template
+          </button>
+          <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium cursor-pointer flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            {importing ? 'Importing...' : 'Import CSV'}
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleCsvImport}
+              disabled={importing}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Form */}
