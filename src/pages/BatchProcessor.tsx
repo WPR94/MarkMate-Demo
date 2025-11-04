@@ -81,7 +81,7 @@ function BatchProcessor() {
           
           for (const [filename, zipEntry] of Object.entries(zipContent.files)) {
             if (zipEntry.dir) continue;
-            if (!filename.match(/\.(txt|docx)$/i)) continue;
+            if (!filename.match(/\.(txt|docx|pdf)$/i)) continue;
             
             const blob = await zipEntry.async('blob');
             const essayFile = new File([blob], filename);
@@ -102,7 +102,7 @@ function BatchProcessor() {
               console.error(`Failed to parse ${filename}:`, error);
             }
           }
-        } else if (file.name.match(/\.(txt|docx)$/i)) {
+        } else if (file.name.match(/\.(txt|docx|pdf)$/i)) {
           // Handle individual essay files
           try {
             const content = await parseEssayFile(file);
@@ -355,7 +355,7 @@ function BatchProcessor() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload Essays</h3>
             <p className="text-gray-600 mb-6">
-              Upload multiple .txt or .docx files, or a ZIP file containing essays
+              Upload multiple .txt, .docx, or .pdf files, or a ZIP file containing essays
             </p>
             
             <label className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 cursor-pointer font-medium">
@@ -367,7 +367,7 @@ function BatchProcessor() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".txt,.docx,.zip"
+                accept=".txt,.docx,.pdf,.zip"
                 onChange={handleFilesUpload}
                 className="hidden"
               />
@@ -391,7 +391,7 @@ function BatchProcessor() {
           <div className="mt-8 pt-6 border-t border-gray-200">
             <h4 className="font-semibold text-gray-900 mb-3">Tips:</h4>
             <ul className="text-sm text-gray-600 space-y-2">
-              <li>• Upload multiple .txt or .docx files at once</li>
+              <li>• Upload multiple .txt, .docx, or .pdf files at once</li>
               <li>• Or upload a ZIP file containing all essays</li>
               <li>• Name files with student names for auto-matching (e.g., "John_Doe_Essay.docx")</li>
               <li>• All essays will be graded using the same rubric</li>

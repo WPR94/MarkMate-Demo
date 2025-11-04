@@ -1,4 +1,8 @@
 import mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set worker source for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 /**
  * Parse rubric content from various file formats
@@ -27,14 +31,31 @@ async function parseDocxFile(file: File): Promise<string> {
 }
 
 /**
- * Extract text from .pdf file using pdf-parse
- * Note: pdf-parse works in Node.js. For browser, we need a different approach.
- * Using a simpler text extraction for now.
+ * Extract text from .pdf file using PDF.js
  */
-async function parsePdfFile(_file: File): Promise<string> {
-  // For browser-based PDF parsing, we'd need pdf.js or similar
-  // For now, return a message to handle server-side or use a different library
-  throw new Error('PDF parsing requires server-side processing. Please use .txt or .docx files, or copy-paste your rubric.');
+async function parsePdfFile(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      fullText += pageText + '\n';
+    }
+    
+    return fullText.trim();
+  } catch (error) {
+    console.error('PDF parsing error:', error);
+    throw new Error('Failed to parse PDF file. The file may be corrupted or encrypted.');
+  }
 }
 
 /**
