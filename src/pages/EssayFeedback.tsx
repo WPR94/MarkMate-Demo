@@ -10,7 +10,9 @@ function EssayFeedback() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [rubricId, setRubricId] = useState<string>('');
+  const [studentId, setStudentId] = useState<string>('');
   const [rubrics, setRubrics] = useState<Array<{ id: string; name: string; subject: string }>>([]);
+  const [students, setStudents] = useState<Array<{ id: string; name: string }>>([]);
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -18,23 +20,40 @@ function EssayFeedback() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
-  // Load teacher's rubrics on mount
+  // Load teacher's rubrics and students on mount
   useEffect(() => {
     if (!user) return;
-    const loadRubrics = async () => {
-      const { data, error } = await supabase
+    
+    const loadData = async () => {
+      // Load rubrics
+      const { data: rubricsData, error: rubricsError } = await supabase
         .from('rubrics')
         .select('id, name, subject')
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Failed to load rubrics:', error);
-      } else if (data) {
-        setRubrics(data);
+      if (rubricsError) {
+        console.error('Failed to load rubrics:', rubricsError);
+      } else if (rubricsData) {
+        setRubrics(rubricsData);
+      }
+      
+      // Load students
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id, name')
+        .eq('teacher_id', user.id)
+        .eq('active', true)
+        .order('name');
+      
+      if (studentsError) {
+        console.error('Failed to load students:', studentsError);
+      } else if (studentsData) {
+        setStudents(studentsData);
       }
     };
-    loadRubrics();
+    
+    loadData();
   }, [user]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -143,7 +162,10 @@ function EssayFeedback() {
         .insert([{
           title,
           content,
+          word_count: validation.wordCount,
           teacher_id: user.id,
+          rubric_id: rubricId,
+          student_id: studentId || null,
         }])
         .select('id')
         .single();
@@ -202,7 +224,7 @@ function EssayFeedback() {
       {/* Rubric Selection */}
       <div className="mb-6">
         <label htmlFor="rubric-select" className="block font-semibold text-gray-700 mb-2">
-          Select Rubric
+          Select Rubric <span className="text-red-500">*</span>
         </label>
         <select
           id="rubric-select"
@@ -220,6 +242,31 @@ function EssayFeedback() {
         {rubrics.length === 0 && (
           <p className="text-sm text-gray-500 mt-2">
             No rubrics found. <a href="/rubrics" className="text-blue-600 hover:underline">Create one</a> first.
+          </p>
+        )}
+      </div>
+      
+      {/* Student Selection */}
+      <div className="mb-6">
+        <label htmlFor="student-select" className="block font-semibold text-gray-700 mb-2">
+          Select Student <span className="text-gray-400 text-sm">(Optional)</span>
+        </label>
+        <select
+          id="student-select"
+          value={studentId}
+          onChange={e => setStudentId(e.target.value)}
+          className="border border-gray-300 p-3 w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="">-- Unassigned --</option>
+          {students.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        {students.length === 0 && (
+          <p className="text-sm text-gray-500 mt-2">
+            No students found. <a href="/students" className="text-blue-600 hover:underline">Add students</a> to link essays.
           </p>
         )}
       </div>

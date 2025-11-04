@@ -16,6 +16,9 @@ interface FeedbackItem {
     title: string;
     content: string;
     created_at: string;
+    students?: {
+      name: string;
+    } | null;
   };
 }
 
@@ -44,13 +47,17 @@ function FeedbackHistory() {
             strengths,
             improvements,
             suggested_feedback,
-            essays (
+            essays!inner (
               title,
               content,
-              created_at
+              created_at,
+              teacher_id,
+              students (
+                name
+              )
             )
           `)
-          .eq('teacher_id', user.id)
+          .eq('essays.teacher_id', user.id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -201,6 +208,11 @@ function FeedbackHistory() {
                       {item.overall_score}/100
                     </span>
                   </div>
+                  {item.essays?.students?.name && (
+                    <p className="text-sm text-gray-700 mb-1">
+                      <span className="font-medium">Student:</span> {item.essays.students.name}
+                    </p>
+                  )}
                   <p className="text-sm text-gray-500 mb-2">{formatDate(item.created_at)}</p>
                   <p className="text-sm text-gray-600 line-clamp-2">{item.suggested_feedback}</p>
                 </div>
@@ -216,6 +228,11 @@ function FeedbackHistory() {
                       <h3 className="text-2xl font-bold text-gray-900 mb-2">
                         {selectedFeedback.essays?.title || 'Untitled Essay'}
                       </h3>
+                      {selectedFeedback.essays?.students?.name && (
+                        <p className="text-sm text-gray-700 mb-1">
+                          <span className="font-semibold">Student:</span> {selectedFeedback.essays.students.name}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-500">
                         Graded on {formatDate(selectedFeedback.created_at)}
                       </p>

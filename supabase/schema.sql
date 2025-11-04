@@ -16,6 +16,20 @@ create table if not exists public.rubrics (
   created_at timestamptz default now()
 );
 
+create table if not exists public.students (
+  id uuid primary key default gen_random_uuid(),
+  teacher_id uuid not null,
+  name text not null,
+  email text not null,
+  grade text,
+  class_section text,
+  student_id text,
+  active boolean default true,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create table if not exists public.essays (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -23,7 +37,8 @@ create table if not exists public.essays (
   word_count int not null,
   created_at timestamptz default now(),
   teacher_id uuid not null,
-  rubric_id uuid references public.rubrics(id)
+  rubric_id uuid references public.rubrics(id),
+  student_id uuid references public.students(id)
 );
 
 create table if not exists public.feedback (
@@ -40,7 +55,9 @@ create table if not exists public.feedback (
 
 -- Useful indexes
 create index if not exists idx_essays_teacher on public.essays(teacher_id);
+create index if not exists idx_essays_student on public.essays(student_id);
 create index if not exists idx_rubrics_teacher on public.rubrics(teacher_id);
+create index if not exists idx_students_teacher on public.students(teacher_id);
 create index if not exists idx_feedback_essay on public.feedback(essay_id);
 create index if not exists idx_feedback_rubric on public.feedback(rubric_id);
 
@@ -49,7 +66,26 @@ create index if not exists idx_feedback_rubric on public.feedback(rubric_id);
 -- =========================
 alter table public.essays enable row level security;
 alter table public.rubrics enable row level security;
+alter table public.students enable row level security;
 alter table public.feedback enable row level security;
+
+-- Students policies
+create policy if not exists "Teachers can select own students"
+  on public.students for select
+  using (teacher_id = auth.uid());
+
+create policy if not exists "Teachers can insert own students"
+  on public.students for insert
+  with check (teacher_id = auth.uid());
+
+create policy if not exists "Teachers can update own students"
+  on public.students for update
+  using (teacher_id = auth.uid())
+  with check (teacher_id = auth.uid());
+
+create policy if not exists "Teachers can delete own students"
+  on public.students for delete
+  using (teacher_id = auth.uid());
 
 -- Essays policies
 create policy if not exists "Teachers can select own essays"
