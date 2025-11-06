@@ -5,6 +5,7 @@ import notify from '../utils/notify';
 import { parseEssayFile } from '../utils/essayParser';
 import { generateAiFeedback } from '../utils/edgeFunctions';
 import JSZip from 'jszip';
+import Navbar from '../components/Navbar';
 
 interface BatchEssay {
   id: string;
@@ -338,228 +339,231 @@ function BatchProcessor() {
   const pendingCount = essays.filter(e => e.status === 'pending').length;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-3xl font-bold text-gray-900">Batch Essay Processor</h2>
-        <p className="text-gray-600 mt-1">Grade multiple essays at once with AI-powered feedback</p>
-      </div>
-
-      {/* Upload Section */}
-      {essays.length === 0 && (
-        <div className="bg-white rounded-lg shadow-md p-8 mb-6">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload Essays</h3>
-            <p className="text-gray-600 mb-6">
-              Upload multiple .txt, .docx, or .pdf files, or a ZIP file containing essays
-            </p>
-            
-            <label className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 cursor-pointer font-medium">
-              <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-              Select Files or ZIP
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".txt,.docx,.pdf,.zip"
-                onChange={handleFilesUpload}
-                className="hidden"
-              />
-            </label>
-            
-            <div className="mt-6 flex items-center justify-center">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoMatchStudents}
-                  onChange={e => setAutoMatchStudents(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">
-                  Auto-match students by filename
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h4 className="font-semibold text-gray-900 mb-3">Tips:</h4>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li>• Upload multiple .txt, .docx, or .pdf files at once</li>
-              <li>• Or upload a ZIP file containing all essays</li>
-              <li>• Name files with student names for auto-matching (e.g., "John_Doe_Essay.docx")</li>
-              <li>• All essays will be graded using the same rubric</li>
-            </ul>
-          </div>
+    <>
+      <Navbar />
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-gray-900">Batch Essay Processor</h2>
+          <p className="text-gray-600 mt-1">Grade multiple essays at once with AI-powered feedback</p>
         </div>
-      )}
 
-      {/* Configuration Section */}
-      {essays.length > 0 && !showResults && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">Configuration</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block font-medium text-gray-700 mb-2">
-                Select Rubric <span className="text-red-500">*</span>
-              </label>
-              <select
-                aria-label="Select rubric for batch processing"
-                value={rubricId}
-                onChange={e => setRubricId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                disabled={processing}
-              >
-                <option value="">-- Choose a rubric --</option>
-                {rubrics.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} {r.subject && `(${r.subject})`}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block font-medium text-gray-700 mb-2">Status</label>
-              <div className="flex gap-4">
-                <div className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
-                  <p className="text-sm text-gray-600">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">{essays.length}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg px-4 py-3 flex-1">
-                  <p className="text-sm text-green-600">Completed</p>
-                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
-                </div>
-                <div className="bg-red-50 rounded-lg px-4 py-3 flex-1">
-                  <p className="text-sm text-red-600">Errors</p>
-                  <p className="text-2xl font-bold text-red-600">{errorCount}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            {!processing && pendingCount > 0 && (
-              <button
-                onClick={startProcessing}
-                disabled={!rubricId}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-              >
-                Start Processing ({pendingCount} essays)
-              </button>
-            )}
-            {processing && (
-              <button
-                onClick={pauseProcessing}
-                className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 font-medium"
-              >
-                Pause
-              </button>
-            )}
-            <button
-              onClick={resetBatch}
-              disabled={processing}
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 disabled:opacity-50 font-medium"
-            >
-              Reset
-            </button>
-          </div>
-
-          {processing && (
-            <div className="mt-6">
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Processing... ({currentIndex + 1} of {pendingCount})</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-green-500 h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` } as React.CSSProperties}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Essays List */}
-      {essays.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Essays ({essays.length})</h3>
-            {showResults && (
-              <button
-                onClick={exportResults}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        {/* Upload Section */}
+        {essays.length === 0 && (
+          <div className="bg-white rounded-lg shadow-md p-8 mb-6">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
+                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                Export Results
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload Essays</h3>
+              <p className="text-gray-600 mb-6">
+                Upload multiple .txt, .docx, or .pdf files, or a ZIP file containing essays
+              </p>
+              
+              <label className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 cursor-pointer font-medium">
+                <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Select Files or ZIP
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".txt,.docx,.pdf,.zip"
+                  onChange={handleFilesUpload}
+                  className="hidden"
+                />
+              </label>
+              
+              <div className="mt-6 flex items-center justify-center">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoMatchStudents}
+                    onChange={e => setAutoMatchStudents(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">
+                    Auto-match students by filename
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h4 className="font-semibold text-gray-900 mb-3">Tips:</h4>
+              <ul className="text-sm text-gray-600 space-y-2">
+                <li>• Upload multiple .txt, .docx, or .pdf files at once</li>
+                <li>• Or upload a ZIP file containing all essays</li>
+                <li>• Name files with student names for auto-matching (e.g., "John_Doe_Essay.docx")</li>
+                <li>• All essays will be graded using the same rubric</li>
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Configuration Section */}
+        {essays.length > 0 && !showResults && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Configuration</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <label className="block font-medium text-gray-700 mb-2">
+                  Select Rubric <span className="text-red-500">*</span>
+                </label>
+                <select
+                  aria-label="Select rubric for batch processing"
+                  value={rubricId}
+                  onChange={e => setRubricId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  disabled={processing}
+                >
+                  <option value="">-- Choose a rubric --</option>
+                  {rubrics.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} {r.subject && `(${r.subject})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block font-medium text-gray-700 mb-2">Status</label>
+                <div className="flex gap-4">
+                  <div className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-2xl font-bold text-gray-900">{essays.length}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg px-4 py-3 flex-1">
+                    <p className="text-sm text-green-600">Completed</p>
+                    <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg px-4 py-3 flex-1">
+                    <p className="text-sm text-red-600">Errors</p>
+                    <p className="text-2xl font-bold text-red-600">{errorCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              {!processing && pendingCount > 0 && (
+                <button
+                  onClick={startProcessing}
+                  disabled={!rubricId}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  Start Processing ({pendingCount} essays)
+                </button>
+              )}
+              {processing && (
+                <button
+                  onClick={pauseProcessing}
+                  className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 font-medium"
+                >
+                  Pause
+                </button>
+              )}
+              <button
+                onClick={resetBatch}
+                disabled={processing}
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 disabled:opacity-50 font-medium"
+              >
+                Reset
               </button>
+            </div>
+
+            {processing && (
+              <div className="mt-6">
+                <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <span>Processing... ({currentIndex + 1} of {pendingCount})</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-green-500 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
             )}
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-100 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Essay Title</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Student</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Words</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Score</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Error</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {essays.map((essay) => (
-                  <tr key={essay.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(essay.status)}`}>
-                        {getStatusIcon(essay.status)} {essay.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">{essay.title}</td>
-                    <td className="px-4 py-3">
-                      {!processing && essay.status === 'pending' ? (
-                        <select
-                          aria-label={`Assign student to ${essay.title}`}
-                          value={essay.studentId || ''}
-                          onChange={e => updateEssayStudent(essay.id, e.target.value)}
-                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="">Unassigned</option>
-                          {students.map(s => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-gray-600">{essay.studentName || 'Unassigned'}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{essay.wordCount}</td>
-                    <td className="px-4 py-3">
-                      {essay.score !== undefined && (
-                        <span className="text-sm font-semibold text-green-600">{essay.score}/100</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-red-600">{essay.error || ''}</td>
+        )}
+
+        {/* Essays List */}
+        {essays.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Essays ({essays.length})</h3>
+              {showResults && (
+                <button
+                  onClick={exportResults}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export Results
+                </button>
+              )}
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-100 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Essay Title</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Student</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Words</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Score</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Error</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {essays.map((essay) => (
+                    <tr key={essay.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(essay.status)}`}>
+                          {getStatusIcon(essay.status)} {essay.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 font-medium">{essay.title}</td>
+                      <td className="px-4 py-3">
+                        {!processing && essay.status === 'pending' ? (
+                          <select
+                            aria-label={`Assign student to ${essay.title}`}
+                            value={essay.studentId || ''}
+                            onChange={e => updateEssayStudent(essay.id, e.target.value)}
+                            className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value="">Unassigned</option>
+                            {students.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-sm text-gray-600">{essay.studentName || 'Unassigned'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{essay.wordCount}</td>
+                      <td className="px-4 py-3">
+                        {essay.score !== undefined && (
+                          <span className="text-sm font-semibold text-green-600">{essay.score}/100</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-red-600">{essay.error || ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }
 

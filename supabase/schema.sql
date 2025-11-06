@@ -20,7 +20,7 @@ create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
   teacher_id uuid not null,
   name text not null,
-  email text not null,
+  email text,
   grade text,
   class_section text,
   student_id text,
@@ -70,61 +70,61 @@ alter table public.students enable row level security;
 alter table public.feedback enable row level security;
 
 -- Students policies
-create policy if not exists "Teachers can select own students"
+create policy "Teachers can select own students"
   on public.students for select
   using (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can insert own students"
+create policy "Teachers can insert own students"
   on public.students for insert
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can update own students"
+create policy "Teachers can update own students"
   on public.students for update
   using (teacher_id = auth.uid())
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can delete own students"
+create policy "Teachers can delete own students"
   on public.students for delete
   using (teacher_id = auth.uid());
 
 -- Essays policies
-create policy if not exists "Teachers can select own essays"
+create policy "Teachers can select own essays"
   on public.essays for select
   using (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can insert own essays"
+create policy "Teachers can insert own essays"
   on public.essays for insert
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can update own essays"
+create policy "Teachers can update own essays"
   on public.essays for update
   using (teacher_id = auth.uid())
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can delete own essays"
+create policy "Teachers can delete own essays"
   on public.essays for delete
   using (teacher_id = auth.uid());
 
 -- Rubrics policies
-create policy if not exists "Teachers can select own rubrics"
+create policy "Teachers can select own rubrics"
   on public.rubrics for select
   using (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can insert own rubrics"
+create policy "Teachers can insert own rubrics"
   on public.rubrics for insert
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can update own rubrics"
+create policy "Teachers can update own rubrics"
   on public.rubrics for update
   using (teacher_id = auth.uid())
   with check (teacher_id = auth.uid());
 
-create policy if not exists "Teachers can delete own rubrics"
+create policy "Teachers can delete own rubrics"
   on public.rubrics for delete
   using (teacher_id = auth.uid());
 
 -- Feedback policies (no direct teacher_id; join via essays/rubrics)
-create policy if not exists "Teachers can select feedback for their essays/rubrics"
+create policy "Teachers can select feedback for their essays/rubrics"
   on public.feedback for select
   using (
     exists (
@@ -137,7 +137,7 @@ create policy if not exists "Teachers can select feedback for their essays/rubri
     )
   );
 
-create policy if not exists "Teachers can insert feedback for their essays/rubrics"
+create policy "Teachers can insert feedback for their essays/rubrics"
   on public.feedback for insert
   with check (
     exists (
@@ -150,7 +150,7 @@ create policy if not exists "Teachers can insert feedback for their essays/rubri
     )
   );
 
-create policy if not exists "Teachers can update feedback for their essays/rubrics"
+create policy "Teachers can update feedback for their essays/rubrics"
   on public.feedback for update
   using (
     exists (
@@ -173,7 +173,7 @@ create policy if not exists "Teachers can update feedback for their essays/rubri
     )
   );
 
-create policy if not exists "Teachers can delete feedback for their essays/rubrics"
+create policy "Teachers can delete feedback for their essays/rubrics"
   on public.feedback for delete
   using (
     exists (

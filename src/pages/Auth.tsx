@@ -1,79 +1,259 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import { useAuth } from '../contexts/AuthContext';
+import Logo from '../components/Logo';
 
 function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     setError(null);
   }, [email, password]);
 
   const handleSignUp = async () => {
+    setLoading(true);
+    setError(null);
     const { error } = await supabase.auth.signUp({ email, password });
+    setLoading(false);
     if (error) {
       setError(error.message);
       notify.error(error.message);
     } else {
       notify.success('Check your email to confirm your account');
+      setIsSignUp(false);
     }
   };
 
   const handleSignIn = async () => {
+    setLoading(true);
+    setError(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
     if (error) {
       setError(error.message);
       notify.error(error.message);
     } else {
-      notify.success('Signed in');
+      notify.success('Welcome back!');
+      navigate('/dashboard');
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSignUp) {
+      handleSignUp();
+    } else {
+      handleSignIn();
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h2 className="text-2xl font-bold mb-4">Log in or Sign up</h2>
-      {error && <p className="text-red-500 mb-2">{error}</p>}
-      {user && (
-        <div className="mb-4 text-green-700">Currently signed in as {user.email}</div>
-      )}
-      <input
-        className="border p-2 mb-2 w-full max-w-sm"
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="Email"
-      />
-      <input
-        className="border p-2 mb-4 w-full max-w-sm"
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        placeholder="Password"
-      />
-      <button
-        className="bg-blue-500 text-white py-2 px-4 mb-2 rounded w-full max-w-sm"
-        onClick={handleSignIn}
-      >
-        Sign In
-      </button>
-      <button
-        className="bg-green-500 text-white py-2 px-4 rounded w-full max-w-sm"
-        onClick={handleSignUp}
-      >
-        Sign Up
-      </button>
-      {user && (
-        <button
-          className="mt-4 bg-gray-700 text-white py-2 px-4 rounded w-full max-w-sm"
-          onClick={async () => { await signOut(); notify.success('Signed out'); }}
-        >
-          Sign Out
-        </button>
-      )}
+    <div className="min-h-screen flex">
+      {/* Left Side - Branding & Info */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between text-white">
+        <div>
+          <Link to="/" className="inline-block mb-12">
+            <Logo className="h-12" />
+          </Link>
+          <h1 className="text-4xl font-bold mb-6">
+            Simplify grading.<br />Amplify teaching.
+          </h1>
+          <p className="text-xl text-blue-100 mb-8">
+            AI-powered essay feedback that saves hours and improves consistency.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-500 rounded-full p-2 mt-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Save 70% of marking time</h3>
+                <p className="text-blue-200 text-sm">Grade essays in minutes, not hours</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-500 rounded-full p-2 mt-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Consistent, rubric-aligned feedback</h3>
+                <p className="text-blue-200 text-sm">AI ensures fair grading across all students</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-500 rounded-full p-2 mt-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Detailed analytics & insights</h3>
+                <p className="text-blue-200 text-sm">Track student progress over time</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="text-sm text-blue-200">
+          <p>Trusted by teachers worldwide</p>
+          <p className="mt-2">© 2025 MarkMate. All rights reserved.</p>
+        </div>
+      </div>
+
+      {/* Right Side - Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+        <div className="w-full max-w-md">
+          {/* Mobile Logo */}
+          <div className="lg:hidden mb-8 text-center">
+            <Link to="/" className="inline-block">
+              <Logo className="h-10 mx-auto" />
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {isSignUp ? 'Create your account' : 'Welcome back'}
+              </h2>
+              <p className="text-gray-600">
+                {isSignUp 
+                  ? 'Sign up to start grading smarter' 
+                  : 'Sign in to your teacher account'}
+              </p>
+            </div>
+
+            {user && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-800 text-sm">
+                  ✓ Currently signed in as <span className="font-semibold">{user.email}</span>
+                </p>
+                <button
+                  onClick={async () => { 
+                    await signOut(); 
+                    notify.success('Signed out successfully'); 
+                  }}
+                  className="mt-2 text-sm text-green-700 hover:text-green-900 underline"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 text-sm">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="teacher@school.edu"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {!isSignUp && (
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
+                    <span className="text-gray-600">Remember me</span>
+                  </label>
+                  <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                    Forgot password?
+                  </a>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{isSignUp ? 'Creating account...' : 'Signing in...'}</span>
+                  </span>
+                ) : (
+                  isSignUp ? 'Create account' : 'Sign in'
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-gray-600 text-sm">
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                <button
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError(null);
+                  }}
+                  className="text-blue-600 hover:text-blue-700 font-semibold"
+                >
+                  {isSignUp ? 'Sign in' : 'Sign up'}
+                </button>
+              </p>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <Link
+                to="/"
+                className="flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to home
+              </Link>
+            </div>
+          </div>
+
+          {/* Demo Account Info */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Demo Account:</span> Try it with test credentials or create your own account.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
