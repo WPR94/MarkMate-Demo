@@ -41,32 +41,32 @@ function Dashboard() {
   const tourSteps = [
     {
       target: '[data-tour="stats"]',
-      title: 'Welcome to MarkMate! 🎉',
-      content: 'This dashboard shows your key statistics at a glance. Track essays graded, rubrics created, and feedback generated.',
+      title: '👋 Welcome to MarkMate!',
+      content: 'Your dashboard gives you an at-a-glance view of all your grading activity. Track total essays, rubrics created, and feedback generated all in one place.',
       placement: 'bottom' as const,
     },
     {
       target: '[data-tour="essay-feedback"]',
-      title: 'Grade Essays',
-      content: 'Click here to start grading a new essay. Upload text, PDFs, or DOCX files and get instant AI-powered feedback.',
+      title: '✍️ Start Grading Essays',
+      content: 'Click here to upload and grade essays. You can paste text directly, or upload PDF/DOCX files. Our AI will analyze the content and provide detailed feedback based on your rubrics.',
       placement: 'bottom' as const,
     },
     {
       target: '[data-tour="rubrics"]',
-      title: 'Manage Rubrics',
-      content: 'Create and manage grading rubrics. Upload from files or create custom criteria to match your needs.',
+      title: '📋 Create Custom Rubrics',
+      content: 'Manage your grading criteria here. Upload rubrics from files or create custom scoring categories. Each rubric can be reused across multiple assignments.',
       placement: 'bottom' as const,
     },
     {
       target: '[data-tour="students"]',
-      title: 'Track Students',
-      content: 'Manage your student roster here. Import from CSV or add students individually.',
+      title: '👥 Manage Your Students',
+      content: 'Keep track of your student roster. Import students from CSV files or add them individually. Link essays to students for better organization and tracking.',
       placement: 'bottom' as const,
     },
     {
       target: '[data-tour="analytics"]',
-      title: 'View Analytics',
-      content: 'See detailed analytics, trends, and export data to CSV. Track student progress over time.',
+      title: '📊 View Insights & Analytics',
+      content: 'See detailed performance trends, score distributions, and export your data to CSV. Track student progress over time and identify areas for improvement.',
       placement: 'bottom' as const,
     },
   ];

@@ -21,7 +21,11 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
     const updatePosition = () => {
       const element = document.querySelector(steps[currentStep].target);
       if (element) {
-        setTargetPosition(element.getBoundingClientRect());
+        const rect = element.getBoundingClientRect();
+        setTargetPosition(rect);
+        
+        // Scroll element into view if needed
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
@@ -29,9 +33,26 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
 
+    // Keyboard navigation
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onSkip();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+
     return () => {
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition);
+      window.removeEventListener('keydown', handleKeyPress);
     };
   }, [currentStep, steps]);
 
@@ -54,35 +75,66 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
 
     const placement = steps[currentStep].placement || 'bottom';
     const offset = 16;
+    const tooltipWidth = 400; // Approximate tooltip width
+    const tooltipHeight = 300; // Approximate tooltip height
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 20; // Padding from viewport edges
 
+    let left = targetPosition.left + targetPosition.width / 2;
+    let top = targetPosition.bottom + offset;
+    let transform = 'translateX(-50%)';
+
+    // Adjust horizontal position to prevent going off-screen
+    if (left - tooltipWidth / 2 < padding) {
+      left = padding + tooltipWidth / 2;
+    } else if (left + tooltipWidth / 2 > viewportWidth - padding) {
+      left = viewportWidth - padding - tooltipWidth / 2;
+    }
+
+    // Adjust vertical position based on placement and viewport
     switch (placement) {
       case 'top':
-        return {
-          left: targetPosition.left + targetPosition.width / 2,
-          top: targetPosition.top - offset,
-          transform: 'translate(-50%, -100%)',
-        };
+        top = targetPosition.top - offset;
+        transform = 'translate(-50%, -100%)';
+        // If tooltip would go off top, show below instead
+        if (top - tooltipHeight < padding) {
+          top = targetPosition.bottom + offset;
+          transform = 'translateX(-50%)';
+        }
+        break;
       case 'bottom':
-        return {
-          left: targetPosition.left + targetPosition.width / 2,
-          top: targetPosition.bottom + offset,
-          transform: 'translateX(-50%)',
-        };
+        top = targetPosition.bottom + offset;
+        transform = 'translateX(-50%)';
+        // If tooltip would go off bottom, show above instead
+        if (top + tooltipHeight > viewportHeight - padding) {
+          top = targetPosition.top - offset;
+          transform = 'translate(-50%, -100%)';
+        }
+        break;
       case 'left':
-        return {
-          left: targetPosition.left - offset,
-          top: targetPosition.top + targetPosition.height / 2,
-          transform: 'translate(-100%, -50%)',
-        };
+        left = targetPosition.left - offset;
+        top = targetPosition.top + targetPosition.height / 2;
+        transform = 'translate(-100%, -50%)';
+        // If off-screen, reposition to right
+        if (left - tooltipWidth < padding) {
+          left = targetPosition.right + offset;
+          transform = 'translateY(-50%)';
+        }
+        break;
       case 'right':
-        return {
-          left: targetPosition.right + offset,
-          top: targetPosition.top + targetPosition.height / 2,
-          transform: 'translateY(-50%)',
-        };
-      default:
-        return {};
+        left = targetPosition.right + offset;
+        top = targetPosition.top + targetPosition.height / 2;
+        transform = 'translateY(-50%)';
+        // If off-screen, reposition to left
+        if (left + tooltipWidth > viewportWidth - padding) {
+          left = targetPosition.left - offset;
+          transform = 'translate(-100%, -50%)';
+        }
+        break;
     }
+
+    return { left, top, transform };
   };
 
   const getHighlightStyle = () => {
@@ -99,30 +151,45 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
   return (
     <>
       {/* Overlay backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" />
+      <div 
+        className="fixed inset-0 bg-black/60 z-40 transition-opacity duration-500 backdrop-blur-sm"
+        style={{ animation: 'fadeIn 0.3s ease-in' }}
+      />
 
       {/* Highlight ring around target element */}
       {targetPosition && (
-        <div
-          className="fixed z-40 border-4 border-blue-500 rounded-lg pointer-events-none transition-all duration-300"
-          style={getHighlightStyle()}
-        />
+        <>
+          {/* Pulsing ring animation */}
+          <div
+            className="fixed z-40 border-4 border-blue-500 rounded-lg pointer-events-none animate-pulse"
+            style={getHighlightStyle()}
+          />
+          {/* Solid ring */}
+          <div
+            className="fixed z-40 border-4 border-blue-400 rounded-lg pointer-events-none shadow-lg"
+            style={getHighlightStyle()}
+          />
+        </>
       )}
 
       {/* Tooltip */}
       {targetPosition && (
         <div
-          className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 max-w-sm transition-all duration-300"
+          className="fixed z-50 bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-96 max-w-[calc(100vw-40px)] transition-all duration-300 border-2 border-blue-500"
           style={getTooltipPosition()}
         >
+          {/* Arrow pointing to target */}
+          <div className="absolute w-0 h-0 border-8 border-transparent">
+            {/* Arrow will be positioned by CSS based on placement */}
+          </div>
           {/* Progress indicator */}
           <div className="flex gap-1 mb-4">
             {steps.map((_, index) => (
               <div
                 key={index}
-                className={`h-1 flex-1 rounded ${
+                className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
                   index === currentStep
-                    ? 'bg-blue-600'
+                    ? 'bg-blue-600 scale-110'
                     : index < currentStep
                     ? 'bg-blue-300'
                     : 'bg-gray-300'
@@ -131,18 +198,23 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
             ))}
           </div>
 
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+          {/* Badge */}
+          <div className="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full text-xs font-semibold mb-3">
+            {currentStep === 0 ? '👋 Welcome' : `Step ${currentStep + 1} of ${steps.length}`}
+          </div>
+
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
             {steps[currentStep].title}
           </h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed text-base">
             {steps[currentStep].content}
           </p>
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3">
             <button
               onClick={onSkip}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium underline transition-colors"
             >
               Skip Tour
             </button>
@@ -150,23 +222,28 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
               {currentStep > 0 && (
                 <button
                   onClick={handlePrev}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg font-medium transition-colors"
+                  className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg font-semibold transition-colors"
                 >
-                  Back
+                  ← Back
                 </button>
               )}
               <button
                 onClick={handleNext}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg transform hover:scale-105"
               >
-                {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
+                {currentStep === steps.length - 1 ? '🎉 Finish Tour' : 'Next →'}
               </button>
             </div>
           </div>
 
-          {/* Step counter */}
-          <div className="text-center mt-4 text-xs text-gray-500 dark:text-gray-400">
-            Step {currentStep + 1} of {steps.length}
+          {/* Step counter with keyboard hint */}
+          <div className="text-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              Step {currentStep + 1} of {steps.length}
+            </div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">
+              Use arrow keys or click buttons to navigate
+            </div>
           </div>
         </div>
       )}
