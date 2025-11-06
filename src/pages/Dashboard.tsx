@@ -49,25 +49,25 @@ function Dashboard() {
       target: '[data-tour="essay-feedback"]',
       title: '✍️ Start Grading Essays',
       content: 'Click here to upload and grade essays. You can paste text directly, or upload PDF/DOCX files. Our AI will analyze the content and provide detailed feedback based on your rubrics.',
-      placement: 'bottom' as const,
+      placement: 'top' as const,
     },
     {
       target: '[data-tour="rubrics"]',
       title: '📋 Create Custom Rubrics',
       content: 'Manage your grading criteria here. Upload rubrics from files or create custom scoring categories. Each rubric can be reused across multiple assignments.',
-      placement: 'bottom' as const,
+      placement: 'top' as const,
     },
     {
       target: '[data-tour="students"]',
       title: '👥 Manage Your Students',
       content: 'Keep track of your student roster. Import students from CSV files or add them individually. Link essays to students for better organization and tracking.',
-      placement: 'bottom' as const,
+      placement: 'top' as const,
     },
     {
       target: '[data-tour="analytics"]',
       title: '📊 View Insights & Analytics',
       content: 'See detailed performance trends, score distributions, and export your data to CSV. Track student progress over time and identify areas for improvement.',
-      placement: 'bottom' as const,
+      placement: 'top' as const,
     },
   ];
 
