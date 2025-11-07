@@ -36,13 +36,13 @@ function Dashboard() {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Onboarding tour
-  const { showTour, completeTour, skipTour } = useOnboardingTour('markmate-dashboard-tour');
+  const { showTour, completeTour, skipTour } = useOnboardingTour('simple-rubriq-dashboard-tour');
 
   const tourSteps = [
     {
       target: '[data-tour="stats"]',
-      title: '👋 Welcome to MarkMate!',
-      content: 'Your dashboard gives you an at-a-glance view of all your grading activity. Track total essays, rubrics created, and feedback generated all in one place.',
+      title: '👋 Welcome to Simple Rubriq!',
+      content: 'Save hours by grading essays against your own rubrics. Your dashboard gives you an at-a-glance view of all your grading activity—track essays, rubrics, and AI-generated feedback in one place.',
       placement: 'bottom' as const,
     },
     {

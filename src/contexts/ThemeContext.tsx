@@ -17,7 +17,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
     // Check localStorage for saved preference
-    const savedTheme = localStorage.getItem('markmate-theme') as Theme | null;
+    const savedTheme = localStorage.getItem('simple-rubriq-theme') as Theme | null;
     if (savedTheme) {
       return savedTheme;
     }
@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     root.classList.add(theme);
 
     // Save to localStorage
-    localStorage.setItem('markmate-theme', theme);
+    localStorage.setItem('simple-rubriq-theme', theme);
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {

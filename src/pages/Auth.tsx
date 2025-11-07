@@ -61,13 +61,13 @@ function Auth() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 flex-col justify-between text-white">
         <div>
           <Link to="/" className="inline-block mb-12">
-            <Logo className="h-12" />
+            <div className="text-3xl font-bold">Simple Rubriq</div>
           </Link>
           <h1 className="text-4xl font-bold mb-6">
-            Simplify grading.<br />Amplify teaching.
+            Save hours grading.<br />Focus on teaching.
           </h1>
           <p className="text-xl text-blue-100 mb-8">
-            AI-powered essay feedback that saves hours and improves consistency.
+            Grade essays against your own rubrics with AI-powered feedback that's fast, fair, and consistent.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">

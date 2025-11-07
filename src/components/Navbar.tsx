@@ -13,7 +13,7 @@ function Navbar() {
   };  return (
     <nav className="bg-white dark:bg-gray-800 shadow mb-6 transition-colors">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">        <div className="flex items-center space-x-6">
-          <Link to="/dashboard" className="font-bold text-lg text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">MarkMate</Link>
+          <Link to="/dashboard" className="font-bold text-lg text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">Simple Rubriq</Link>
           <Link to="/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Dashboard</Link>
           <Link to="/rubrics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Rubrics</Link>
           <Link to="/students" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Students</Link>
