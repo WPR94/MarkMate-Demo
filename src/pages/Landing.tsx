@@ -53,12 +53,6 @@ function Landing() {
               About
             </Link>
             <Link 
-              to="/demo" 
-              className="px-4 py-2 text-white hover:text-blue-100 font-medium transition-colors duration-200"
-            >
-              Try Demo
-            </Link>
-            <Link 
               to="/auth" 
               className="px-4 py-2 bg-white text-blue-600 rounded-md font-medium hover:bg-blue-50 transition-colors duration-200"
             >
