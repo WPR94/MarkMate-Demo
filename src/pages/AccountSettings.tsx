@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import ConfirmModal from '../components/ConfirmModal';
+import Navbar from '../components/Navbar';
 import { notify } from '../utils/notify';
 
 export default function AccountSettings() {
@@ -93,10 +94,23 @@ export default function AccountSettings() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">
-        Account Settings
-      </h1>
+    <>
+      <Navbar />
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium mb-4"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Dashboard
+          </button>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Account Settings
+          </h1>
+        </div>
 
       {/* Account Information */}
       <section className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
@@ -240,6 +254,7 @@ export default function AccountSettings() {
         confirmText="Delete Everything"
         type="danger"
       />
-    </div>
+      </div>
+    </>
   );
 }
