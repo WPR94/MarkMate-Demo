@@ -105,9 +105,8 @@ function Auth() {
             </div>
           </div>
         </div>
-        <div className="text-sm text-blue-200">
-          <p>Trusted by teachers worldwide</p>
-          <p className="mt-2">© 2025 MarkMate. All rights reserved.</p>
+        <div className="text-center text-blue-100 text-sm">
+          <p className="mt-2">© 2025 Simple Rubriq. All rights reserved.</p>
         </div>
       </div>
 
