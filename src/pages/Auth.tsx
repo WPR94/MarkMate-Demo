@@ -4,6 +4,11 @@ import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from '../components/Logo';
+import { 
+  validatePasswordStrength, 
+  getPasswordStrengthLabel, 
+  getPasswordStrengthColor 
+} from '../utils/passwordStrength';
 
 function Auth() {
   const [email, setEmail] = useState('');
@@ -14,11 +19,21 @@ function Auth() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
+  // Password strength state
+  const passwordStrength = isSignUp ? validatePasswordStrength(password) : null;
+
   useEffect(() => {
     setError(null);
   }, [email, password]);
 
   const handleSignUp = async () => {
+    // Validate password strength before signup
+    if (passwordStrength && !passwordStrength.isValid) {
+      setError('Please choose a stronger password');
+      notify.error('Password does not meet security requirements');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.signUp({ email, password });
@@ -184,6 +199,38 @@ function Auth() {
                   required
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
+                
+                {/* Password Strength Indicator (only show during signup) */}
+                {isSignUp && password.length > 0 && passwordStrength && (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-600">Password Strength:</span>
+                      <span className={`text-xs font-semibold ${
+                        passwordStrength.score <= 1 ? 'text-red-600' :
+                        passwordStrength.score === 2 ? 'text-yellow-600' :
+                        passwordStrength.score === 3 ? 'text-blue-600' :
+                        'text-green-600'
+                      }`}>
+                        {getPasswordStrengthLabel(passwordStrength.score)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor(passwordStrength.score)}`}
+                        style={{ width: `${(passwordStrength.score / 4) * 100}%` }}
+                      />
+                    </div>
+                    {passwordStrength.feedback.length > 0 && (
+                      <ul className="text-xs space-y-1">
+                        {passwordStrength.feedback.map((tip, idx) => (
+                          <li key={idx} className={tip.includes('Strong') ? 'text-green-600' : 'text-gray-600'}>
+                            {tip.includes('Strong') ? '✓' : '•'} {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
 
               {!isSignUp && (

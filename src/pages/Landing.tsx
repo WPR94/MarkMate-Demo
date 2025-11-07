@@ -100,9 +100,9 @@ function Landing() {
           <div className="flex flex-col items-center space-y-4">
             <p className="text-white/90">© 2025 Simple Rubriq. Built with ❤️ for teachers.</p>
             <div className="flex items-center space-x-4 text-sm">
-              <a href="#" className="text-white/80 hover:text-white transition-colors">Privacy Policy</a>
+              <Link to="/privacy" className="text-white/80 hover:text-white transition-colors">Privacy Policy</Link>
               <span className="text-white/40">|</span>
-              <a href="#" className="text-white/80 hover:text-white transition-colors">Terms of Service</a>
+              <Link to="/terms" className="text-white/80 hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>

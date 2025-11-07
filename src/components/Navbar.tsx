@@ -38,6 +38,12 @@ function Navbar() {
               </svg>
             )}
           </button>
+          <Link 
+            to="/settings" 
+            className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium"
+          >
+            Settings
+          </Link>
           {user && <span className="text-sm text-gray-500 dark:text-gray-400">{user.email}</span>}
           <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">Logout</button>
         </div>

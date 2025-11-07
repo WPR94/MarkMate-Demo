@@ -11,13 +11,23 @@ import FeedbackHistory from './pages/FeedbackHistory';
 import Demo from './pages/Demo';
 import DashboardDemo from './pages/DashboardDemo';
 import About from './pages/About';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import DataProcessingAgreement from './pages/DataProcessingAgreement';
+import AccountSettings from './pages/AccountSettings';
 import ProtectedRoute from './components/ProtectedRoute';
+import { CookieConsent } from './components/CookieConsent';
+import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
+  // Session timeout for security (auto-logout after inactivity)
+  useSessionTimeout();
+
   return (
     <>
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+      <CookieConsent />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
@@ -35,6 +45,13 @@ function App() {
         <Route path="/demo" element={<Demo />} />
   <Route path="/dashboard-demo" element={<DashboardDemo />} />
         <Route path="/about" element={<About />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/dpa" element={<DataProcessingAgreement />} />
+        {/* Protected Settings */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/settings" element={<AccountSettings />} />
+        </Route>
       </Routes>
     </>
   );
