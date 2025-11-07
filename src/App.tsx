@@ -17,17 +17,23 @@ import DataProcessingAgreement from './pages/DataProcessingAgreement';
 import AccountSettings from './pages/AccountSettings';
 import ProtectedRoute from './components/ProtectedRoute';
 import { CookieConsent } from './components/CookieConsent';
+import { FeedbackButton } from './components/FeedbackButton';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
+import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
   // Session timeout for security (auto-logout after inactivity)
   useSessionTimeout();
+  
+  const { user } = useAuth();
 
   return (
     <>
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <CookieConsent />
+      {/* Show feedback button only for authenticated users */}
+      {user && <FeedbackButton />}
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={<Auth />} />
