@@ -31,17 +31,18 @@ export default function About() {
         <li>Keeps you in control with the ability to edit and personalize every comment</li>
       </ul>
       
-      <h2 className="text-2xl font-semibold mt-8 mb-3 text-blue-800 dark:text-blue-300">Built by Teachers, For Teachers</h2>
+      <h2 className="text-2xl font-semibold mt-8 mb-3 text-blue-800 dark:text-blue-300">Built For Teachers, By Someone Who Listened</h2>
       <p className="mb-4 leading-relaxed">
-        Simple Rubriq was created by <strong>Wilson Roserie</strong>, an IT engineer and educator 
-        who understands the challenges of marking at scale. After seeing firsthand how marking 
-        fatigue affects feedback quality, Wilson built Simple Rubriq to give teachers the support 
-        they need without sacrificing the personal touch students deserve.
+        Simple Rubriq was created by <strong>Wilson Roserie</strong>, an IT engineer who heard 
+        one too many teacher friends talk about spending their entire weekends marking essays. 
+        After listening to their struggles with marking fatigue, inconsistent feedback, and the 
+        impossible choice between speed and quality, Wilson built Simple Rubriq to give educators 
+        the support they desperately needed.
       </p>
       <p className="mb-8 leading-relaxed text-gray-700 dark:text-gray-300 border-l-4 border-blue-500 pl-4 italic">
-        "Simple Rubriq is about helping teachers focus on what matters most: inspiring learning 
-        and building relationships with students. Technology should make teaching easier, not 
-        more complicated."
+        "My teacher friends were burning out from marking, and I knew technology could help. 
+        Simple Rubriq is about giving teachers their time back so they can focus on what they 
+        do best: inspiring students and building meaningful connections in the classroom."
       </p>
       
       <div className="mt-8 text-sm text-gray-600 dark:text-gray-400 space-y-2">
