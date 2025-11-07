@@ -146,30 +146,6 @@ function Landing() {
         </div>
       </main>
 
-      {/* Social Proof / Stats Section */}
-      <section className="bg-white/5 backdrop-blur-sm border-t border-white/10 py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold text-yellow-300 mb-2">95%</div>
-              <div className="text-blue-100 text-sm">Time Saved</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-green-300 mb-2">500+</div>
-              <div className="text-blue-100 text-sm">Teachers</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-purple-300 mb-2">50k+</div>
-              <div className="text-blue-100 text-sm">Essays Graded</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-pink-300 mb-2">4.9★</div>
-              <div className="text-blue-100 text-sm">Teacher Rating</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="py-8 bg-white/5 backdrop-blur-sm border-t border-white/10">
         <div className="container mx-auto px-6">
