@@ -1,7 +1,19 @@
+import { Link } from 'react-router-dom';
+
 export default function About() {
   return (
-    <div className="max-w-3xl mx-auto p-8 text-gray-800 dark:text-gray-200">
-      <h1 className="text-4xl font-bold mb-4 text-blue-900 dark:text-blue-300">About Simple Rubriq</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
+      <div className="max-w-3xl mx-auto p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg text-gray-800 dark:text-gray-200">
+        <Link 
+          to="/" 
+          className="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium mb-6 transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Home
+        </Link>
+        <h1 className="text-4xl font-bold mb-4 text-blue-900 dark:text-blue-300">About Simple Rubriq</h1>
       <p className="text-lg mb-6 leading-relaxed">
         <strong>Simplify grading. Amplify teaching.</strong> Simple Rubriq is an AI-powered grading assistant that helps teachers save time and improve feedback quality by aligning comments directly to your rubric criteria.
       </p>
@@ -49,6 +61,7 @@ export default function About() {
         <p>🌐 <strong>Demo:</strong> <a href="https://simple-rubriq-demo.vercel.app" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700">simple-rubriq-demo.vercel.app</a></p>
         <p>📂 <strong>GitHub:</strong> <a href="https://github.com/WPR94/MarkMate-Demo" className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700">View our open source code</a></p>
         <p>📧 <strong>Contact:</strong> simplrubriq@gmail.com</p>
+      </div>
       </div>
     </div>
   );
