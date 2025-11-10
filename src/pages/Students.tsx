@@ -454,8 +454,8 @@ function Students() {
 
         {/* Students Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full">
               <thead className="bg-gray-100 border-b border-gray-200">
                 <tr>
                   <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Name</th>
