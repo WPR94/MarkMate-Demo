@@ -11,17 +11,17 @@ function Navbar() {
     await signOut();
     navigate('/auth');
   };  return (
-    <nav className="bg-white dark:bg-gray-800 shadow mb-6 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">        <div className="flex items-center space-x-6">
-          <Link to="/dashboard" className="font-bold text-lg text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">Simple Rubriq</Link>
-          <Link to="/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Dashboard</Link>
-          <Link to="/rubrics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Rubrics</Link>
-          <Link to="/students" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Students</Link>
-          <Link to="/essay-feedback" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Essay Feedback</Link>
-          <Link to="/analytics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Analytics</Link>
-          <Link to="/batch" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Batch</Link>
+    <nav className="bg-white dark:bg-gray-800 shadow mb-6 transition-colors overflow-x-auto">
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between min-w-max">        <div className="flex items-center space-x-3 md:space-x-6">
+          <Link to="/dashboard" className="font-bold text-base md:text-lg text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 whitespace-nowrap">Simple Rubriq</Link>
+          <Link to="/dashboard" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">Dashboard</Link>
+          <Link to="/rubrics" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">Rubrics</Link>
+          <Link to="/students" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">Students</Link>
+          <Link to="/essay-feedback" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap hidden sm:inline">Essay Feedback</Link>
+          <Link to="/analytics" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">Analytics</Link>
+          <Link to="/batch" className="text-sm md:text-base text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">Batch</Link>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 md:space-x-4">
           <button
             onClick={toggleTheme}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -40,12 +40,12 @@ function Navbar() {
           </button>
           <Link 
             to="/settings" 
-            className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-medium"
+            className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 text-xs md:text-sm font-medium whitespace-nowrap"
           >
             Settings
           </Link>
-          {user && <span className="text-sm text-gray-500 dark:text-gray-400">{user.email}</span>}
-          <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">Logout</button>
+          {user && <span className="text-xs md:text-sm text-gray-500 dark:text-gray-400 hidden lg:inline truncate max-w-[120px]">{user.email}</span>}
+          <button onClick={handleLogout} className="bg-red-500 text-white px-2 md:px-3 py-1 rounded hover:bg-red-600 transition-colors text-xs md:text-sm whitespace-nowrap">Logout</button>
         </div>
       </div>
     </nav>

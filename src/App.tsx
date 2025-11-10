@@ -29,7 +29,7 @@ function App() {
   const { user } = useAuth();
 
   return (
-    <>
+    <div className="overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
       <CookieConsent />
       {/* Show feedback button only for authenticated users */}
@@ -59,7 +59,7 @@ function App() {
           <Route path="/settings" element={<AccountSettings />} />
         </Route>
       </Routes>
-    </>
+    </div>
   );
 }
 

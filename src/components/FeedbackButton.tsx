@@ -9,7 +9,11 @@ export function FeedbackButton() {
       {/* Floating Feedback Button */}
       <button
         onClick={handleFeedbackClick}
-        className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 group"
+        className="fixed bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-50 group"
+        style={{ 
+          bottom: 'calc(1.5rem + env(safe-area-inset-bottom))',
+          right: 'calc(1.5rem + env(safe-area-inset-right))'
+        }}
         aria-label="Send feedback"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
