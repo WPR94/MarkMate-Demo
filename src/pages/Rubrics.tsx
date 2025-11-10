@@ -167,6 +167,39 @@ function Rubrics() {
     if (!rubricToDelete) return;
 
     try {
+      // Check if rubric is being used by any essays
+      const { data: essays, error: essaysError } = await supabase
+        .from('essays')
+        .select('id')
+        .eq('rubric_id', rubricToDelete)
+        .limit(1);
+
+      if (essaysError) throw essaysError;
+
+      if (essays && essays.length > 0) {
+        notify.error('Cannot delete rubric: it is being used by existing essays. Delete those essays first.');
+        setDeleteModalOpen(false);
+        setRubricToDelete(null);
+        return;
+      }
+
+      // Check if rubric is being used by any feedback
+      const { data: feedback, error: feedbackError } = await supabase
+        .from('feedback')
+        .select('id')
+        .eq('rubric_id', rubricToDelete)
+        .limit(1);
+
+      if (feedbackError) throw feedbackError;
+
+      if (feedback && feedback.length > 0) {
+        notify.error('Cannot delete rubric: it has associated feedback. Delete the feedback first.');
+        setDeleteModalOpen(false);
+        setRubricToDelete(null);
+        return;
+      }
+
+      // Now safe to delete
       const { error } = await supabase
         .from('rubrics')
         .delete()
@@ -180,7 +213,9 @@ function Rubrics() {
       setRubricToDelete(null);
     } catch (error: any) {
       console.error('Error deleting rubric:', error);
-      notify.error('Failed to delete rubric');
+      notify.error(`Failed to delete rubric: ${error.message || 'Unknown error'}`);
+      setDeleteModalOpen(false);
+      setRubricToDelete(null);
     }
   };
 

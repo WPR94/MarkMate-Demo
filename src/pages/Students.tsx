@@ -165,6 +165,23 @@ function Students() {
     if (!studentToDelete) return;
 
     try {
+      // Check if student has any essays
+      const { data: essays, error: essaysError } = await supabase
+        .from('essays')
+        .select('id')
+        .eq('student_id', studentToDelete)
+        .limit(1);
+
+      if (essaysError) throw essaysError;
+
+      if (essays && essays.length > 0) {
+        notify.error('Cannot delete student: they have existing essays. Delete those essays first or set student as inactive.');
+        setDeleteModalOpen(false);
+        setStudentToDelete(null);
+        return;
+      }
+
+      // Safe to delete
       const { error } = await supabase
         .from('students')
         .delete()
@@ -179,7 +196,9 @@ function Students() {
       setStudentToDelete(null);
     } catch (error: any) {
       console.error('Error deleting student:', error);
-      notify.error('Failed to delete student');
+      notify.error(`Failed to delete student: ${error.message || 'Unknown error'}`);
+      setDeleteModalOpen(false);
+      setStudentToDelete(null);
     }
   };
 
