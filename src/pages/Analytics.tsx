@@ -293,8 +293,8 @@ function Analytics() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
         </div>
       ) : feedbackData.length === 0 ? (
-        <div className="p-6 max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6 text-gray-900">Analytics Dashboard</h2>
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900">Analytics Dashboard</h2>
           <div className="bg-white rounded-lg shadow-md p-8 text-center">
             <svg
               className="w-16 h-16 text-gray-400 mx-auto mb-4"
@@ -316,18 +316,18 @@ function Analytics() {
           </div>
         </div>
       ) : (
-        <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h2>
-            <p className="text-gray-600 mt-1">Track performance and trends across your graded essays</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics Dashboard</h2>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Track performance and trends across your graded essays</p>
           </div>
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
           >
             <svg
-              className="w-5 h-5"
+              className="w-4 h-4 sm:w-5 sm:h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

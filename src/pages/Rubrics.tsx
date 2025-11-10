@@ -187,9 +187,9 @@ function Rubrics() {
   return (
     <>
       <Navbar />
-      <div className="p-4 max-w-5xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4">Rubrics Manager</h2>
-        <form onSubmit={handleSubmit} className="border p-4 bg-gray-50 rounded mb-6 space-y-4">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Rubrics Manager</h2>
+        <form onSubmit={handleSubmit} className="border p-4 sm:p-6 bg-gray-50 rounded mb-6 space-y-4">
           {/* File Upload Section */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start justify-between mb-2">
@@ -261,29 +261,31 @@ function Rubrics() {
           <div>
             <label className="block font-semibold mb-2">Criteria</label>
             {criteria.map((c) => (
-              <div key={c.id} className="flex flex-col sm:flex-row gap-2 mb-2 items-center">
+              <div key={c.id} className="flex flex-col sm:flex-row gap-2 mb-2 sm:items-center">
                 <input
-                  className="border p-2 flex-1"
+                  className="border p-2 flex-1 w-full"
                   placeholder="Criterion category (e.g. Grammar)"
                   value={c.category}
                   onChange={e => handleCriterionChange(c.id, 'category', e.target.value)}
                   required
                 />
-                <label className="sr-only" htmlFor={`maxPoints-${c.id}`}>Max points</label>
-                <input
-                  id={`maxPoints-${c.id}`}
-                  className="border p-2 w-24"
-                  type="number"
-                  min="1"
-                  value={c.maxPoints}
-                  onChange={e => handleCriterionChange(c.id, 'maxPoints', e.target.value)}
-                  required
-                />
-                {criteria.length > 1 && (
-                  <button type="button" aria-label="Remove criterion" onClick={() => removeCriterion(c.id)} className="text-red-600">
-                    Remove
-                  </button>
-                )}
+                <div className="flex gap-2 items-center">
+                  <label className="sr-only" htmlFor={`maxPoints-${c.id}`}>Max points</label>
+                  <input
+                    id={`maxPoints-${c.id}`}
+                    className="border p-2 w-24"
+                    type="number"
+                    min="1"
+                    value={c.maxPoints}
+                    onChange={e => handleCriterionChange(c.id, 'maxPoints', e.target.value)}
+                    required
+                  />
+                  {criteria.length > 1 && (
+                    <button type="button" aria-label="Remove criterion" onClick={() => removeCriterion(c.id)} className="text-red-600 px-2">
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             <button type="button" onClick={addCriterion} className="text-blue-600">Add Criterion</button>
