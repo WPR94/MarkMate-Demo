@@ -156,12 +156,9 @@ export default function AccountSettings() {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/change-password')}
-          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
-        >
-          Change Password →
-        </button>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+          To change your password, please sign out and use the "Forgot Password" option on the login page.
+        </p>
       </section>
 
       {/* Privacy & Data Rights (GDPR) */}

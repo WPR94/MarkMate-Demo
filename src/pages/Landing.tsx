@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 
 function Landing() {
   const [isLoading, setIsLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     async function checkConnection() {
@@ -38,14 +39,14 @@ function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white flex flex-col">
       {/* Navbar */}
       <nav className="w-full bg-white/10 backdrop-blur-md shadow-lg border-b border-white/20">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
           {/* Logo */}
           <Link to="/" className="inline-flex items-center group" aria-label="Simple Rubriq Home">
-            <Logo className="h-10 transition-transform group-hover:scale-105" />
+            <Logo className="h-8 sm:h-10 transition-transform group-hover:scale-105" />
           </Link>
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center space-x-4">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-4">
             <Link 
               to="/about" 
               className="px-4 py-2 text-white hover:text-blue-100 font-medium transition-colors duration-200"
@@ -59,20 +60,57 @@ function Landing() {
               Get Started Free
             </Link>
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white/10 backdrop-blur-md border-t border-white/20">
+            <div className="container mx-auto px-4 py-4 flex flex-col space-y-3">
+              <Link 
+                to="/about" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-white hover:bg-white/10 rounded-lg font-medium transition-colors duration-200"
+              >
+                About
+              </Link>
+              <Link 
+                to="/auth" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2.5 bg-white text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition-all duration-200 text-center"
+              >
+                Get Started Free
+              </Link>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12 sm:py-20">
         <div className="max-w-5xl w-full text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-8 border border-white/30">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-xs sm:text-sm font-medium mb-6 sm:mb-8 border border-white/30">
             <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
             AI-Powered Essay Grading
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 leading-tight px-2">
             Mark smarter,
             <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-400">
@@ -81,29 +119,29 @@ function Landing() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-blue-100 mb-12 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-blue-100 mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4">
             AI-powered rubric grading that saves hours on marking while delivering 
             structured, consistent feedback students actually understand.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-12 sm:mb-16 px-4">
             <Link 
               to="/auth" 
-              className="px-8 py-4 bg-white text-blue-600 rounded-lg font-bold text-lg hover:bg-blue-50 transition-all duration-200 shadow-2xl hover:shadow-3xl hover:scale-105"
+              className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-blue-600 rounded-lg font-bold text-base sm:text-lg hover:bg-blue-50 transition-all duration-200 shadow-2xl hover:shadow-3xl hover:scale-105"
             >
               Start Free Trial →
             </Link>
             <Link 
               to="/about" 
-              className="px-8 py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-lg font-bold text-lg hover:bg-white/20 transition-all duration-200"
+              className="px-6 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur-sm border-2 border-white/30 text-white rounded-lg font-bold text-base sm:text-lg hover:bg-white/20 transition-all duration-200"
             >
               Learn More
             </Link>
           </div>
 
-          {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-6 mt-20">
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 sm:mt-20 px-4">
             {/* Card 1 */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
               <div className="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center mb-6 mx-auto">
@@ -147,13 +185,13 @@ function Landing() {
       </main>
 
       {/* Footer */}
-      <footer className="py-8 bg-white/5 backdrop-blur-sm border-t border-white/10">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col items-center space-y-4">
-            <p className="text-white/90">© 2025 Simple Rubriq. Built with ❤️ for teachers.</p>
-            <div className="flex items-center space-x-4 text-sm">
+      <footer className="py-6 sm:py-8 bg-white/5 backdrop-blur-sm border-t border-white/10">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex flex-col items-center space-y-3 sm:space-y-4">
+            <p className="text-white/90 text-sm sm:text-base text-center">© 2025 Simple Rubriq. Built with ❤️ for teachers.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-xs sm:text-sm">
               <Link to="/privacy" className="text-white/80 hover:text-white transition-colors">Privacy Policy</Link>
-              <span className="text-white/40">|</span>
+              <span className="hidden sm:inline text-white/40">|</span>
               <Link to="/terms" className="text-white/80 hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>

@@ -282,24 +282,25 @@ function Students() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
         </div>
       ) : (
-      <div className="p-6 max-w-6xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Students Manager</h2>
-            <p className="text-gray-600 mt-1">Manage your students and track their essay submissions</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Students Manager</h2>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Manage your students and track their essay submissions</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               onClick={downloadCsvTemplate}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium flex items-center gap-2"
+              className="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-700 font-medium flex items-center justify-center gap-2 text-sm"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Download CSV Template
+              <span className="hidden sm:inline">Download CSV Template</span>
+              <span className="sm:hidden">CSV Template</span>
             </button>
-            <label className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium cursor-pointer flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <label className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 font-medium cursor-pointer flex items-center justify-center gap-2 text-sm">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               {importing ? 'Importing...' : 'Import CSV'}
@@ -435,50 +436,52 @@ function Students() {
         {/* Students Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-gray-100 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Grade</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Section</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Student ID</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Name</th>
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Email</th>
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Grade</th>
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Section</th>
+                  <th className="hidden xl:table-cell px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Student ID</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Status</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs sm:text-sm font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {students.map(s => (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{s.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{s.email}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{s.grade || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{s.class_section || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{s.student_id || '-'}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-900">{s.name}</td>
+                    <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{s.email}</td>
+                    <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{s.grade || '-'}</td>
+                    <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{s.class_section || '-'}</td>
+                    <td className="hidden xl:table-cell px-3 sm:px-4 py-3 text-xs sm:text-sm text-gray-600">{s.student_id || '-'}</td>
+                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm">
                       {s.active ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm space-x-3">
-                      <button 
-                        onClick={() => handleEdit(s.id)} 
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => openDeleteModal(s.id)} 
-                        className="text-red-600 hover:text-red-800 font-medium"
-                      >
-                        Delete
-                      </button>
+                    <td className="px-3 sm:px-4 py-3 text-xs sm:text-sm">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                        <button 
+                          onClick={() => handleEdit(s.id)} 
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => openDeleteModal(s.id)} 
+                          className="text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -4,8 +4,17 @@ export default function DataProcessingAgreement() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 sm:p-8">
+          <Link 
+            to="/privacy" 
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-6 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Privacy Policy
+          </Link>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Data Processing Agreement (DPA)
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
@@ -114,32 +123,34 @@ export default function DataProcessingAgreement() {
               <p className="text-gray-700 dark:text-gray-300 mb-4">
                 Simple Rubriq uses the following approved sub-processors:
               </p>
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mb-4">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-white">Sub-Processor</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-white">Service</th>
-                    <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900 dark:text-white">Location</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">Supabase</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">Database & Auth</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">UK/EU (AWS)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">OpenAI</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">AI Grading</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">USA (SCCs)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">Vercel</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">Hosting</td>
-                    <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">Global CDN</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div className="overflow-x-auto -mx-6 sm:mx-0">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mb-4">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Sub-Processor</th>
+                      <th className="px-4 py-2 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Service</th>
+                      <th className="px-4 py-2 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white">Location</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tr>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">Supabase</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">Database & Auth</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">UK/EU (AWS)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">OpenAI</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">AI Grading</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">USA (SCCs)</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">Vercel</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">Hosting</td>
+                      <td className="px-4 py-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">Global CDN</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <p className="text-gray-700 dark:text-gray-300">
                 All sub-processors are bound by Standard Contractual Clauses (SCCs) for international transfers.
               </p>
