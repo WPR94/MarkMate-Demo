@@ -2,8 +2,8 @@ import mammoth from 'mammoth';
 import Tesseract from 'tesseract.js';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker source for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set worker source for PDF.js - use unpkg for better reliability
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 /**
  * Parse essay content from various file formats
@@ -31,7 +31,14 @@ async function parseDocxFile(file: File): Promise<string> {
 async function parsePdfFile(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const loadingTask = pdfjsLib.getDocument({
+      data: arrayBuffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    });
+    
+    const pdf = await loadingTask.promise;
     
     let fullText = '';
     
@@ -46,10 +53,20 @@ async function parsePdfFile(file: File): Promise<string> {
       fullText += pageText + '\n';
     }
     
-    return fullText.trim();
+    const trimmedText = fullText.trim();
+    
+    // Check if PDF has no extractable text (image-only PDF)
+    if (trimmedText.length === 0) {
+      throw new Error('PDF contains no extractable text. This may be a scanned document - please use OCR or convert to text first.');
+    }
+    
+    return trimmedText;
   } catch (error) {
     console.error('PDF parsing error:', error);
-    throw new Error('Failed to parse PDF file. The file may be corrupted or encrypted.');
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Failed to parse PDF file. The file may be corrupted, encrypted, or image-only.');
   }
 }
 

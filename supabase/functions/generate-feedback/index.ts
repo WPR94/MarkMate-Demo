@@ -1,5 +1,5 @@
 // Supabase Edge Function: generate-feedback
-// Set your secret with: supabase secrets set OPENAI_API_KEY=... 
+// Set your secrets with: supabase secrets set OPENAI_API_KEY=sk-proj-...
 // Deploy with: supabase functions deploy generate-feedback
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -77,30 +77,25 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  const { essay, rubric } = (body as { essay?: string; rubric?: { criteria?: unknown[] } }) ?? {};
-  const criteria = Array.isArray(rubric?.criteria) ? rubric?.criteria : null;
+  const { essay, rubricCriteria, type } = (body as { 
+    essay?: string
+    rubricCriteria?: string
+    type?: 'feedback' | 'score' | 'both'
+  }) ?? {};
 
-  if (typeof essay !== "string" || !criteria || criteria.length === 0) {
+  if (typeof essay !== "string" || typeof rubricCriteria !== "string") {
     return new Response(
-      JSON.stringify({ error: "Missing 'essay' or 'rubric.criteria'" }),
+      JSON.stringify({ error: "Missing 'essay' or 'rubricCriteria'" }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
   // Basic input size validation (prevent abuse)
   const MAX_ESSAY_LENGTH = 50000; // ~10k words
-  const MAX_CRITERIA = 50;
   
   if (essay.length > MAX_ESSAY_LENGTH) {
     return new Response(
       JSON.stringify({ error: `Essay too long (max ${MAX_ESSAY_LENGTH} characters)` }),
-      { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-  }
-  
-  if (criteria.length > MAX_CRITERIA) {
-    return new Response(
-      JSON.stringify({ error: `Too many criteria (max ${MAX_CRITERIA})` }),
       { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
@@ -113,26 +108,10 @@ serve(async (req: Request): Promise<Response> => {
     );
   }
 
-  const systemPrompt =
-    "You are an experienced English examiner. Grade the essay based on the provided rubric. Return JSON feedback including grammar issues, strengths, improvements, sentences that meet criteria, and an overall score out of 100.";
-
-  const userPayload = {
-    essay,
-    rubric: { criteria },
-    required_response_shape: {
-      grammar_issues: ["string"],
-      strengths: ["string"],
-      improvements: ["string"],
-      criteria_matches: [
-        { criterion: "string", examples: ["string", "string"] }
-      ],
-      suggested_feedback: "string",
-      overall_score: 0
-    }
-  };
+  const requestType = type || 'both';
 
   // Helper to call OpenAI chat completions
-  async function callOpenAI(model: string): Promise<AiFeedback> {
+  async function generateFeedback(): Promise<string> {
     const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -140,18 +119,31 @@ serve(async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
+        model: "gpt-3.5-turbo",
         messages: [
-          { role: "system", content: systemPrompt },
+          { 
+            role: "system", 
+            content: `You are an expert educator providing constructive feedback on student essays. 
+            Be specific, encouraging, and actionable. Format your feedback clearly with sections for:
+            - Strengths (what the student did well)
+            - Areas for Improvement (constructive suggestions)
+            - Action Steps (concrete next steps)` 
+          },
           {
             role: "user",
-            content:
-              "Analyze the following input and ONLY return a strict JSON object matching 'required_response_shape'.\n\n" +
-              JSON.stringify(userPayload),
+            content: `Please grade and provide feedback on this essay using the following rubric:
+            
+            RUBRIC:
+            ${rubricCriteria}
+            
+            ESSAY:
+            ${essay}
+            
+            Provide detailed, helpful feedback that follows the rubric.`,
           },
         ],
-        temperature: 0.2,
+        temperature: 0.7,
+        max_tokens: 1500,
       }),
     });
 
@@ -163,27 +155,74 @@ serve(async (req: Request): Promise<Response> => {
     const data = await resp.json();
     const content = data?.choices?.[0]?.message?.content;
     if (!content) throw new Error("No content from OpenAI");
-    const parsed = JSON.parse(content) as AiFeedback;
-    return parsed;
+    return content;
+  }
+
+  async function generateScore(): Promise<number> {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert educator. Return ONLY a number between 0-100 representing the essay score based on the rubric.
+            Do not include any other text, just the number.`,
+          },
+          {
+            role: "user",
+            content: `Score this essay on a scale of 0-100 using this rubric:
+            
+            RUBRIC:
+            ${rubricCriteria}
+            
+            ESSAY:
+            ${essay}`,
+          },
+        ],
+        temperature: 0.5,
+        max_tokens: 10,
+      }),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`OpenAI API error (${resp.status}): ${text}`);
+    }
+
+    const data = await resp.json();
+    const scoreText = data?.choices?.[0]?.message?.content?.trim();
+    const score = parseInt(scoreText || '0', 10);
+    
+    if (isNaN(score) || score < 0 || score > 100) {
+      throw new Error('Invalid score returned');
+    }
+    return score;
   }
 
   try {
-    let feedback: AiFeedback | null = null;
-    try {
-      feedback = await callOpenAI("gpt-4-turbo");
-    } catch (_err) {
-      // Fallback to 3.5 if model unavailable
-      feedback = await callOpenAI("gpt-3.5-turbo");
+    const result: any = {};
+
+    if (requestType === 'feedback' || requestType === 'both') {
+      result.feedback = await generateFeedback();
     }
 
-    return new Response(JSON.stringify(feedback), {
+    if (requestType === 'score' || requestType === 'both') {
+      result.score = await generateScore();
+    }
+
+    return new Response(JSON.stringify(result), {
       headers: { "Content-Type": "application/json", ...corsHeaders },
       status: 200,
     });
   } catch (err) {
     console.error("generate-feedback error", err);
     return new Response(
-      JSON.stringify({ error: "Failed to generate feedback" }),
+      JSON.stringify({ error: `Failed to generate: ${err instanceof Error ? err.message : 'Unknown error'}` }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

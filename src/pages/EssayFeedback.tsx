@@ -3,7 +3,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import { parseEssayFile, validateEssay } from '../utils/essayParser';
-import { generateAiFeedback, AiFeedback } from '../utils/edgeFunctions';
+import { generateEssayFeedback, generateEssayScore } from '../utils/openaiClient';
+import { generateFeedbackViaEdgeFunction, generateScoreViaEdgeFunction } from '../utils/openaiEdgeFunction';
+import { AiFeedback } from '../utils/edgeFunctions';
 import Navbar from '../components/Navbar';
 import jsPDF from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
@@ -204,7 +206,7 @@ function EssayFeedback() {
       // Get rubric details
       const { data: rubricData, error: rubricError } = await supabase
         .from('rubrics')
-        .select('criteria')
+        .select('criteria, name')
         .eq('id', rubricId)
         .single();
       
@@ -212,8 +214,83 @@ function EssayFeedback() {
         throw new Error('Failed to load rubric');
       }
       
-      // Call AI Edge Function
-      const aiFeedback = await generateAiFeedback(content, { criteria: rubricData.criteria });
+      // Prepare rubric criteria string for OpenAI
+      const rubricCriteria = Array.isArray(rubricData.criteria)
+        ? rubricData.criteria.join('\n')
+        : typeof rubricData.criteria === 'string'
+        ? rubricData.criteria
+        : JSON.stringify(rubricData.criteria);
+      
+      notify.info('Generating AI feedback... please wait');
+      
+      // Try edge function first (secure server-side), fallback to client-side
+      let feedbackText: string;
+      let score: number;
+      
+      try {
+        // Attempt to use Edge Function (most secure)
+        console.log('📡 Trying Edge Function for feedback generation...');
+        feedbackText = await generateFeedbackViaEdgeFunction(content, rubricCriteria);
+        score = await generateScoreViaEdgeFunction(content, rubricCriteria);
+        console.log('✅ Using Edge Function - API key safely on server');
+      } catch (edgeFunctionError) {
+        console.warn('⚠️ Edge Function failed, falling back to client-side OpenAI:', edgeFunctionError);
+        // Fallback to client-side OpenAI if edge function not deployed
+        feedbackText = await generateEssayFeedback(content, rubricCriteria);
+        score = await generateEssayScore(content, rubricCriteria);
+        console.log('✅ Using Client-side OpenAI API');
+      }
+      
+      // Parse feedback text into structured format
+      const parseFeedbackText = (text: string) => {
+        const sections = {
+          strengths: [] as string[],
+          improvements: [] as string[],
+          grammar_issues: [] as string[],
+        };
+        
+        // Split into main sections - look for common patterns
+        const strengthsMatch = text.match(/Strengths:(.*?)(?=Areas for Improvement:|$)/is);
+        const improvementsMatch = text.match(/Areas for Improvement:(.*?)(?=Action Steps:|Suggested Feedback:|$)/is);
+        const grammarMatch = text.match(/grammar issues?:(.*?)(?=Strengths:|Areas for Improvement:|$)/is);
+        
+        if (strengthsMatch) {
+          sections.strengths = strengthsMatch[1]
+            .split(/[\-•*]|\d+\./)
+            .filter(s => s.trim())
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        }
+        
+        if (improvementsMatch) {
+          sections.improvements = improvementsMatch[1]
+            .split(/[\-•*]|\d+\./)
+            .filter(s => s.trim())
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        }
+        
+        if (grammarMatch) {
+          sections.grammar_issues = grammarMatch[1]
+            .split(/[\-•*]|\d+\./)
+            .filter(s => s.trim())
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        }
+        
+        return sections;
+      };
+      
+      const parsed = parseFeedbackText(feedbackText);
+      
+      const aiFeedback: AiFeedback = {
+        overall_score: Math.min(100, Math.max(0, score)),
+        grammar_issues: parsed.grammar_issues.length > 0 ? parsed.grammar_issues : ['No significant grammar issues found'],
+        strengths: parsed.strengths.length > 0 ? parsed.strengths : ['Well-structured and coherent essay'],
+        improvements: parsed.improvements.length > 0 ? parsed.improvements : ['Continue to develop and refine writing skills'],
+        suggested_feedback: feedbackText,
+        criteria_matches: [],
+      };
       
       setFeedback(aiFeedback);
       
@@ -285,8 +362,10 @@ function EssayFeedback() {
         notify.success('AI feedback generated and saved successfully!');
       }
     } catch (error) {
-      console.error('Generate error:', error);
-      notify.error(error instanceof Error ? error.message : 'Failed to generate feedback');
+      console.error('❌ Generate error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error details:', { errorMessage, fullError: error });
+      notify.error(errorMessage || 'Failed to generate feedback');
     } finally {
       setGenerating(false);
     }

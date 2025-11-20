@@ -65,14 +65,20 @@
     min-height: 100vh;
   }
   
-  /* Ensure all containers respect viewport width */
-  * {
+  /* Ensure images and media respect viewport width */
+  img, video {
     max-width: 100%;
+    height: auto;
   }
   
   /* Prevent text from causing overflow */
   body * {
     word-wrap: break-word;
     overflow-wrap: break-word;
+  }
+  
+  /* Ensure charts and visualizations render properly */
+  svg, canvas {
+    max-width: none !important;
   }
 }

@@ -72,6 +72,7 @@ function BatchProcessor() {
     if (files.length === 0) return;
 
     const loadedEssays: BatchEssay[] = [];
+    const errors: string[] = [];
 
     try {
       for (const file of files) {
@@ -94,13 +95,14 @@ function BatchProcessor() {
               loadedEssays.push({
                 id: Math.random().toString(36).substr(2, 9),
                 filename,
-                title: filename.replace(/\.(txt|docx)$/i, ''),
+                title: filename.replace(/\.(txt|docx|pdf)$/i, ''),
                 content,
                 wordCount,
                 status: 'pending',
               });
             } catch (error) {
               console.error(`Failed to parse ${filename}:`, error);
+              errors.push(`${filename}: ${error instanceof Error ? error.message : 'Parse failed'}`);
             }
           }
         } else if (file.name.match(/\.(txt|docx|pdf)$/i)) {
@@ -112,20 +114,29 @@ function BatchProcessor() {
             loadedEssays.push({
               id: Math.random().toString(36).substr(2, 9),
               filename: file.name,
-              title: file.name.replace(/\.(txt|docx)$/i, ''),
+              title: file.name.replace(/\.(txt|docx|pdf)$/i, ''),
               content,
               wordCount,
               status: 'pending',
             });
           } catch (error) {
             console.error(`Failed to parse ${file.name}:`, error);
+            errors.push(`${file.name}: ${error instanceof Error ? error.message : 'Parse failed'}`);
           }
         }
       }
 
       if (loadedEssays.length === 0) {
-        notify.error('No valid essay files found');
+        if (errors.length > 0) {
+          notify.error(`Failed to load essays. Errors: ${errors.join('; ')}`);
+        } else {
+          notify.error('No valid essay files found');
+        }
         return;
+      }
+      
+      if (errors.length > 0) {
+        notify.info(`Loaded ${loadedEssays.length} essays. ${errors.length} files failed to load.`);
       }
 
       // Auto-match students by filename if enabled

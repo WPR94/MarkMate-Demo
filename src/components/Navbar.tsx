@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useState } from 'react';
 
 function Navbar() {
-  const { user, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,6 +32,9 @@ function Navbar() {
             <Link to="/essay-feedback" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Essay Feedback</Link>
             <Link to="/analytics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Analytics</Link>
             <Link to="/batch" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Batch</Link>
+            {profile?.is_admin && (
+              <Link to="/admin" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">Admin</Link>
+            )}
           </div>
 
           {/* Desktop Right Side */}
@@ -141,6 +144,15 @@ function Navbar() {
             >
               Batch
             </Link>
+            {profile?.is_admin && (
+              <Link 
+                to="/admin" 
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 text-orange-600 dark:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
+              >
+                Admin Portal
+              </Link>
+            )}
             <Link 
               to="/settings" 
               onClick={() => setMobileMenuOpen(false)}

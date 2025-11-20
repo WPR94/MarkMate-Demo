@@ -1,9 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  // Surface a clear error rather than silent failure
+  console.error(
+    '[Supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Check .env.local or .env file.'
+  );
+}
+
+export const supabase = createClient(supabaseUrl || 'https://invalid.local', supabaseAnonKey || 'invalid');
 
 // Simple connectivity check (non-blocking); logs to console in dev
 export async function testSupabaseConnection(): Promise<void> {

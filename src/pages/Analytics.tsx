@@ -32,7 +32,6 @@ interface FeedbackData {
 interface GradeDistribution {
   range: string;
   count: number;
-  [key: string]: string | number;
 }
 
 interface TrendData {
@@ -53,10 +52,10 @@ function Analytics() {
   const [feedbackData, setFeedbackData] = useState<FeedbackData[]>([]);
   const [metrics, setMetrics] = useState({
     essaysGraded: 0,
-    rubricsCount: 0,
+    timeSavedHours: 0,
     averageScore: 0,
-    highestScore: 0,
-    lowestScore: 0,
+    medianScore: 0,
+    standardDeviation: 0,
   });
   const [gradeDistribution, setGradeDistribution] = useState<GradeDistribution[]>([]);
   const [trendData, setTrendData] = useState<TrendData[]>([]);
@@ -71,7 +70,6 @@ function Analytics() {
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      console.log('📊 Loading Analytics for user:', user!.id);
       
       // Load essays for this teacher
       const { data: essays, error: essaysError } = await supabase
@@ -80,30 +78,22 @@ function Analytics() {
         .eq('teacher_id', user!.id)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Essays loaded:', essays?.length || 0, essays);
-      if (essaysError) {
-        console.error('📊 Essays error:', essaysError);
-        throw essaysError;
-      }
+      if (essaysError) throw essaysError;
 
-      // If no essays yet, populate minimal metrics and exit early
+      // If no essays yet, return early
       if (!essays || essays.length === 0) {
-        const { count: rubricsCount } = await supabase
-          .from('rubrics')
-          .select('*', { count: 'exact', head: true })
-          .eq('teacher_id', user!.id);
-
         setMetrics({
           essaysGraded: 0,
-          rubricsCount: rubricsCount || 0,
+          timeSavedHours: 0,
           averageScore: 0,
-          highestScore: 0,
-          lowestScore: 0,
+          medianScore: 0,
+          standardDeviation: 0,
         });
         setFeedbackData([]);
         setGradeDistribution([]);
         setTrendData([]);
         setRubricPerformance([]);
+        setLoading(false);
         return;
       }
 
@@ -117,11 +107,7 @@ function Analytics() {
         .in('essay_id', essayIds)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Feedback loaded:', feedback?.length || 0, feedback);
-      if (feedbackError) {
-        console.error('📊 Feedback error:', feedbackError);
-        throw feedbackError;
-      }
+      if (feedbackError) throw feedbackError;
 
       // Load rubrics for name lookup
       const { data: rubricsData, error: rubricsError } = await supabase
@@ -152,18 +138,28 @@ function Analytics() {
       if (transformedFeedback.length > 0) {
         const scores = transformedFeedback.map(f => f.overall_score);
         const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-        const maxScore = Math.max(...scores);
-        const minScore = Math.min(...scores);
-
-        // Rubrics count from map
-        const rubricsCount = rubricMap.size;
+        
+        // Calculate median
+        const sortedScores = [...scores].sort((a, b) => a - b);
+        const median = sortedScores.length % 2 === 0
+          ? (sortedScores[sortedScores.length / 2 - 1] + sortedScores[sortedScores.length / 2]) / 2
+          : sortedScores[Math.floor(sortedScores.length / 2)];
+        
+        // Calculate standard deviation
+        const squaredDifferences = scores.map(score => Math.pow(score - avgScore, 2));
+        const avgSquaredDiff = squaredDifferences.reduce((a, b) => a + b, 0) / scores.length;
+        const stdDev = Math.sqrt(avgSquaredDiff);
+        
+        // Calculate time saved (estimated 15 minutes per essay)
+        const minutesSaved = transformedFeedback.length * 15;
+        const hoursSaved = Math.round((minutesSaved / 60) * 10) / 10;
 
         setMetrics({
           essaysGraded: transformedFeedback.length,
-          rubricsCount: rubricsCount || 0,
+          timeSavedHours: hoursSaved,
           averageScore: Math.round(avgScore),
-          highestScore: Math.round(maxScore),
-          lowestScore: Math.round(minScore),
+          medianScore: Math.round(median),
+          standardDeviation: Math.round(stdDev * 10) / 10,
         });
 
         // Calculate grade distribution
@@ -215,7 +211,7 @@ function Analytics() {
             avgScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
             count: scores.length,
           }))
-          .slice(-14); // Last 14 data points
+          .slice(-14);
 
         setTrendData(trend);
 
@@ -243,7 +239,6 @@ function Analytics() {
   };
 
   const handleExportCSV = () => {
-    // Prepare comprehensive data for export
     const exportData = feedbackData.map(item => ({
       'Essay Title': item.essay_title,
       'Rubric Name': item.rubric_name,
@@ -255,22 +250,8 @@ function Analytics() {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      'Essay ID': item.essay_id,
-      'Feedback ID': item.id,
     }));
 
-    // Add summary sheet data
-    const summaryData = [
-      { Metric: 'Total Essays Graded', Value: metrics.essaysGraded },
-      { Metric: 'Total Rubrics Used', Value: metrics.rubricsCount },
-      { Metric: 'Average Score', Value: metrics.averageScore.toFixed(1) },
-      { Metric: 'Highest Score', Value: metrics.highestScore },
-      { Metric: 'Lowest Score', Value: metrics.lowestScore },
-      { Metric: '', Value: '' }, // Empty row
-      { Metric: 'Export Date', Value: new Date().toLocaleDateString() },
-    ];
-
-    // Generate filename with timestamp
     const timestamp = new Date().toISOString().split('T')[0];
     const filename = `markmate-analytics-${timestamp}.csv`;
 
@@ -317,153 +298,185 @@ function Analytics() {
         </div>
       ) : (
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics Dashboard</h2>
-            <p className="text-sm sm:text-base text-gray-600 mt-1">Track performance and trends across your graded essays</p>
-          </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-          >
-            <svg
-              className="w-4 h-4 sm:w-5 sm:h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Analytics Dashboard</h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Track performance and trends across your graded essays</p>
+            </div>
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Export CSV
-          </button>
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Essays Graded</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.essaysGraded}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Rubrics Used</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.rubricsCount}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Average Score</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.averageScore}%</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Highest Score</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.highestScore}%</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
-            <h3 className="text-sm font-semibold text-gray-600 mb-1">Lowest Score</h3>
-            <p className="text-3xl font-bold text-gray-900">{metrics.lowestScore}%</p>
-          </div>
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Grade Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Grade Distribution</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={gradeDistribution}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="count" fill="#8b5cf6" name="Number of Essays" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Grade Distribution Pie */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Score Breakdown</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={gradeDistribution}
-                  dataKey="count"
-                  nameKey="range"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={(entry) => `${entry.range}: ${entry.count}`}
-                >
-                  {gradeDistribution.map((_entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Trend Over Time */}
-        {trendData.length > 0 && (
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Score Trends (Last 30 Days)</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="avgScore"
-                  stroke="#8b5cf6"
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeWidth={2}
-                  name="Average Score"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
-              </LineChart>
-            </ResponsiveContainer>
+              </svg>
+              Export CSV
+            </button>
           </div>
-        )}
 
-        {/* Rubric Performance */}
-        {rubricPerformance.length > 0 && (
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Performance by Rubric</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={rubricPerformance} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={150} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="avgScore" fill="#10b981" name="Average Score" />
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rubricPerformance.map((rubric, idx) => (
-                <div key={idx} className="p-4 bg-gray-50 rounded-lg">
-                  <p className="font-semibold text-gray-900 truncate" title={rubric.name}>
-                    {rubric.name}
-                  </p>
-                  <div className="flex justify-between mt-2 text-sm">
-                    <span className="text-gray-600">Avg Score:</span>
-                    <span className="font-bold text-green-600">{rubric.avgScore}%</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Essays:</span>
-                    <span className="font-semibold">{rubric.count}</span>
-                  </div>
-                </div>
-              ))}
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Essays Graded</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.essaysGraded}</p>
+              <p className="text-xs text-gray-500 mt-2">Total assignments processed</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Time Saved</h3>
+              <p className="text-3xl font-bold text-green-600">{metrics.timeSavedHours}h</p>
+              <p className="text-xs text-gray-500 mt-2">~{Math.round(metrics.timeSavedHours * 60)} minutes</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Average Score</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.averageScore}%</p>
+              <p className="text-xs text-gray-500 mt-2">Mean student performance</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Median Score</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.medianScore}%</p>
+              <p className="text-xs text-gray-500 mt-2">Middle value (typical)</p>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+              <h3 className="text-sm font-semibold text-gray-600 mb-1">Score Spread</h3>
+              <p className="text-3xl font-bold text-gray-900">{metrics.standardDeviation}</p>
+              <p className="text-xs text-gray-500 mt-2">Consistency (lower = more consistent)</p>
             </div>
           </div>
-        )}
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Grade Distribution */}
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md overflow-hidden">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Grade Distribution</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 350 : 300} minWidth={320}>
+                  <BarChart data={gradeDistribution} margin={{ top: 5, right: 10, left: -20, bottom: window.innerWidth < 768 ? 50 : 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="range" angle={window.innerWidth < 768 ? -45 : 0} textAnchor={window.innerWidth < 768 ? 'end' : 'middle'} height={window.innerWidth < 768 ? 80 : 30} />
+                    <YAxis width={window.innerWidth < 768 ? 40 : 60} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#8b5cf6" name="Number of Essays" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Score Breakdown */}
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md overflow-hidden">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Score Breakdown</h3>
+              {window.innerWidth < 768 ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-2 gap-3">
+                    {gradeDistribution.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div 
+                          className="w-4 h-4 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                        />
+                        <div>
+                          <p className="text-xs text-gray-600 font-medium">{item.range}</p>
+                          <p className="text-sm font-bold text-gray-900">{item.count}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full overflow-x-auto">
+                  <ResponsiveContainer width="100%" height={300} minWidth={300}>
+                    <PieChart>
+                      <Pie
+                        data={gradeDistribution}
+                        dataKey="count"
+                        nameKey="range"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={100}
+                        label={(entry) => `${entry.range}: ${entry.count}`}
+                      >
+                        {gradeDistribution.map((_entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => `${value} essays`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Trend Over Time */}
+          {trendData.length > 0 && (
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md mb-6 overflow-hidden">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Score Trends (Last 30 Days)</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={300} minWidth={300}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="avgScore"
+                      stroke="#8b5cf6"
+                      strokeWidth={2}
+                      name="Average Score"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Rubric Performance */}
+          {rubricPerformance.length > 0 && (
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Performance by Rubric</h3>
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={300} minWidth={400}>
+                  <BarChart data={rubricPerformance} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" domain={[0, 100]} />
+                    <YAxis dataKey="name" type="category" width={150} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="avgScore" fill="#10b981" name="Average Score" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {rubricPerformance.map((rubric, idx) => (
+                  <div key={idx} className="p-4 bg-gray-50 rounded-lg">
+                    <p className="font-semibold text-gray-900 truncate" title={rubric.name}>
+                      {rubric.name}
+                    </p>
+                    <div className="flex justify-between mt-2 text-sm">
+                      <span className="text-gray-600">Avg Score:</span>
+                      <span className="font-bold text-green-600">{rubric.avgScore}%</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Essays:</span>
+                      <span className="font-semibold">{rubric.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

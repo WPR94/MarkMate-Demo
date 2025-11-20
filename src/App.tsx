@@ -16,17 +16,29 @@ import Terms from './pages/Terms';
 import DataProcessingAgreement from './pages/DataProcessingAgreement';
 import AccountSettings from './pages/AccountSettings';
 import ProtectedRoute from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminUsers } from './pages/AdminUsers';
+import { AdminAnalytics } from './pages/AdminAnalytics';
+import { AdminActivityLogs } from './pages/AdminActivityLogs';
 import { CookieConsent } from './components/CookieConsent';
 import { FeedbackButton } from './components/FeedbackButton';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import { useEffect } from 'react';
+import { testSupabaseConnection } from './lib/supabaseClient';
 
 function App() {
   // Session timeout for security (auto-logout after inactivity)
   useSessionTimeout();
   
   const { user } = useAuth();
+
+  // Quick connectivity check on mount (dev aid)
+  useEffect(() => {
+    testSupabaseConnection();
+  }, []);
 
   return (
     <div className="overflow-x-hidden">
@@ -58,6 +70,11 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/settings" element={<AccountSettings />} />
         </Route>
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+        <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+        <Route path="/admin/activity" element={<AdminRoute><AdminActivityLogs /></AdminRoute>} />
       </Routes>
     </div>
   );
