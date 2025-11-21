@@ -6,11 +6,25 @@ const openai = new OpenAI({
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OPENAI_API_KEY not configured');
+      return res.status(500).json({ error: 'API key not configured. Please add OPENAI_API_KEY to environment variables.' });
+    }
+
     const { essayText, rubricCriteria, examBoard } = req.body;
 
     if (!essayText || !rubricCriteria) {

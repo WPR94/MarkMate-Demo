@@ -1,7 +1,7 @@
 // Serverless function API endpoints (secure - API key stays on server)
-const API_BASE = import.meta.env.DEV 
-  ? 'http://localhost:5173/api' // Vite will proxy in dev
-  : '/api'; // Production uses Vercel serverless functions
+// In development, we'll use mock responses or fallback to direct OpenAI calls
+// In production, we use Vercel serverless functions
+const API_BASE = '/api';
 
 /**
  * Enhanced feedback structure returned by AI
@@ -40,6 +40,14 @@ export async function generateEssayFeedback(
       body: JSON.stringify({ essayText, rubricCriteria, examBoard }),
     });
 
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('❌ Non-JSON response:', text);
+      throw new Error('Server error: Invalid response format. Please check API configuration.');
+    }
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to generate feedback');
@@ -69,6 +77,13 @@ export async function generateEssayScore(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ essayText, rubricCriteria }),
     });
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('❌ Non-JSON response:', text);
+      throw new Error('Server error: Invalid response format. Please check API configuration.');
+    }
 
     if (!response.ok) {
       const error = await response.json();
@@ -106,6 +121,13 @@ export async function generateBandAnalysis(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ essayText, rubricCriteria, examBoard }),
     });
+
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('❌ Non-JSON response:', text);
+      throw new Error('Server error: Invalid response format. Please check API configuration.');
+    }
 
     if (!response.ok) {
       const error = await response.json();
