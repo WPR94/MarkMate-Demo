@@ -20,7 +20,7 @@ export default function Logo({ className = "h-10" }: { className?: string }) {
         <path d="M24 26 l4 4 l8 -10" stroke="#FBBF24" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <span className="text-[#1E3A8A] font-semibold text-lg leading-none">
-        simple rubriq
+        Simple RubriQ
       </span>
     </div>
   );

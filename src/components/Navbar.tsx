@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState } from 'react';
+import Logo from './Logo';
 
 function Navbar() {
   const { profile, signOut } = useAuth();
@@ -20,9 +21,10 @@ function Navbar() {
         {/* Mobile and Desktop Header */}
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/dashboard" className="font-bold text-lg text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300">
-            Simple Rubriq
-          </Link>
++          <Link to="/dashboard" className="hover:opacity-90" aria-label="Simple RubriQ Home">
+            <span className="sr-only">Simple RubriQ</span>
+            <Logo className="h-8" />
++          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6">
@@ -32,6 +34,7 @@ function Navbar() {
             <Link to="/essay-feedback" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Essay Feedback</Link>
             <Link to="/analytics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Analytics</Link>
             <Link to="/batch" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Batch</Link>
+            <Link to="/calibration" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Calibration</Link>
             {profile?.is_admin && (
               <Link to="/admin" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">Admin</Link>
             )}
@@ -143,6 +146,13 @@ function Navbar() {
               className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Batch
+            </Link>
+            <Link 
+              to="/calibration" 
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Calibration
             </Link>
             {profile?.is_admin && (
               <Link 

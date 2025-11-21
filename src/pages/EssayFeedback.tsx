@@ -3,12 +3,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import { parseEssayFile, validateEssay } from '../utils/essayParser';
-import { generateEssayFeedback, generateEssayScore } from '../utils/openaiClient';
+import { generateEssayFeedback, generateEssayScore, generateBandAnalysis } from '../utils/openaiClient';
 import { generateFeedbackViaEdgeFunction, generateScoreViaEdgeFunction } from '../utils/openaiEdgeFunction';
 import { AiFeedback } from '../utils/edgeFunctions';
 import Navbar from '../components/Navbar';
 import jsPDF from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
+import CommentBank from '../components/CommentBank';
 
 // Helper to create a simple text highlight based on keyword matching
 function highlightEssayText(text: string, feedback: AiFeedback | null): React.ReactNode[] {
@@ -73,13 +75,17 @@ function EssayFeedback() {
   const [content, setContent] = useState('');
   const [rubricId, setRubricId] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
-  const [rubrics, setRubrics] = useState<Array<{ id: string; name: string; subject: string }>>([]);
+  const [rubrics, setRubrics] = useState<Array<{ id: string; name: string; subject: string; exam_board?: string }>>([]);
   const [students, setStudents] = useState<Array<{ id: string; name: string }>>([]);
+  const [bandAnalysis, setBandAnalysis] = useState<any>(null);
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [savedEssayId, setSavedEssayId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [showCommentBank, setShowCommentBank] = useState(false);
+  const [showAoLegend, setShowAoLegend] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,7 +97,7 @@ function EssayFeedback() {
       // Load rubrics
       const { data: rubricsData, error: rubricsError } = await supabase
         .from('rubrics')
-        .select('id, name, subject')
+        .select('id, name, subject, exam_board')
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
       
@@ -223,9 +229,14 @@ function EssayFeedback() {
       
       notify.info('Generating AI feedback... please wait');
       
-      // Try edge function first (secure server-side), fallback to client-side
+      // Get selected rubric's exam board for GCSE-specific feedback
+      const selectedRubric = rubrics.find(r => r.id === rubricId);
+      const examBoard = selectedRubric?.exam_board;
+      
+      // Try edge function first (secure server-side), fallback to enhanced client-side
       let feedbackText: string;
       let score: number;
+      let bandData: any = null;
       
       try {
         // Attempt to use Edge Function (most secure)
@@ -234,11 +245,21 @@ function EssayFeedback() {
         score = await generateScoreViaEdgeFunction(content, rubricCriteria);
         console.log('✅ Using Edge Function - API key safely on server');
       } catch (edgeFunctionError) {
-        console.warn('⚠️ Edge Function failed, falling back to client-side OpenAI:', edgeFunctionError);
-        // Fallback to client-side OpenAI if edge function not deployed
-        feedbackText = await generateEssayFeedback(content, rubricCriteria);
+        console.warn('⚠️ Edge Function failed, falling back to enhanced client-side OpenAI:', edgeFunctionError);
+        // Fallback to enhanced client-side OpenAI with GCSE analysis
+        feedbackText = await generateEssayFeedback(content, rubricCriteria, examBoard);
         score = await generateEssayScore(content, rubricCriteria);
-        console.log('✅ Using Client-side OpenAI API');
+        
+        // Get detailed band analysis if GCSE rubric
+        try {
+          bandData = await generateBandAnalysis(content, rubricCriteria, examBoard);
+          setBandAnalysis(bandData);
+          console.log('✅ GCSE Band Analysis:', bandData);
+        } catch (bandError) {
+          console.warn('⚠️ Band analysis failed (non-critical):', bandError);
+        }
+        
+        console.log('✅ Using Enhanced Client-side OpenAI API with GCSE analysis');
       }
       
       // Parse feedback text into structured format
@@ -375,6 +396,7 @@ function EssayFeedback() {
     // Clear state and scroll to top for new feedback
     setFeedback(null);
     setSavedEssayId(null);
+    setBandAnalysis(null);
     setTitle('');
     setContent('');
     setRubricId('');
@@ -417,7 +439,40 @@ function EssayFeedback() {
       addText(`Essay: ${title}`, 12, true);
       addText(`Date: ${new Date().toLocaleDateString()}`, 10);
       addText(`Overall Score: ${feedback.overall_score}/100`, 12, true);
+      
+      // Band Analysis in PDF
+      if (bandAnalysis) {
+        addText(`GCSE Band: ${bandAnalysis.overall_band}/6 (${
+          bandAnalysis.overall_band === 6 ? 'Exceptional' :
+          bandAnalysis.overall_band === 5 ? 'Secure' :
+          bandAnalysis.overall_band === 4 ? 'Developing' :
+          bandAnalysis.overall_band === 3 ? 'Emerging' :
+          bandAnalysis.overall_band === 2 ? 'Limited' : 'Basic'
+        })`, 11, true);
+        if (bandAnalysis.justification) {
+          addText(`"${bandAnalysis.justification}"`, 9);
+        }
+      }
       yPosition += 5;
+      
+      // Assessment Objectives Analysis
+      if (bandAnalysis?.ao_bands && bandAnalysis.ao_bands.length > 0) {
+        addText('ASSESSMENT OBJECTIVES ANALYSIS', 12, true);
+        bandAnalysis.ao_bands.forEach((ao: any) => {
+          addText(`${ao.ao} - Band ${ao.band}: ${ao.comment}`, 10);
+        });
+        yPosition += 5;
+      }
+
+      // AO Legend (if toggled on)
+      if (showAoLegend) {
+        addText('ASSESSMENT OBJECTIVES GUIDE', 12, true);
+        addText('AO1: Content and Organisation - Identify and interpret information, select evidence, communicate clearly', 9);
+        addText('AO2: Language, Structure and Form - Analyse how writers use language and structure to achieve effects', 9);
+        addText('AO3: Context - Show understanding of relationships between texts and contexts', 9);
+        addText('AO4: SPaG - Use accurate spelling, punctuation, grammar, and varied vocabulary', 9);
+        yPosition += 5;
+      }
       
       // Grammar Issues
       addText('GRAMMAR ISSUES', 12, true);
@@ -476,6 +531,16 @@ function EssayFeedback() {
     window.print();
   };
 
+  const handleInsertComment = (text: string, target: 'strengths' | 'improvements' | 'grammar_issues' = 'improvements') => {
+    if (!feedback) return;
+    const updated: AiFeedback = { ...feedback };
+    if (target === 'strengths') updated.strengths = [...(feedback.strengths || []), text];
+    if (target === 'improvements') updated.improvements = [...(feedback.improvements || []), text];
+    if (target === 'grammar_issues') updated.grammar_issues = [...(feedback.grammar_issues || []), text];
+    setFeedback(updated);
+    notify.success('Comment inserted');
+  };
+
   const handleExportDocx = async () => {
     if (!feedback) return;
     try {
@@ -532,6 +597,22 @@ function EssayFeedback() {
       notify.error('Failed to export DOCX');
     }
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    { key: 'Enter', ctrl: true, callback: () => handleGenerate(), description: 'Generate AI feedback' },
+    { key: 'p', ctrl: true, shift: true, callback: () => handleExportText(), description: 'Export PDF' },
+    { key: 'd', ctrl: true, shift: true, callback: () => handleExportDocx(), description: 'Export DOCX' },
+    { key: '?', shift: true, callback: () => setShortcutsOpen((v) => !v), description: 'Toggle shortcuts help' },
+    { key: 'ArrowUp', ctrl: true, callback: () => {
+        if (!feedback) return;
+        setFeedback({ ...feedback, overall_score: Math.min(100, feedback.overall_score + 1) });
+      }, description: 'Increase score +1' },
+    { key: 'ArrowDown', ctrl: true, callback: () => {
+        if (!feedback) return;
+        setFeedback({ ...feedback, overall_score: Math.max(0, feedback.overall_score - 1) });
+      }, description: 'Decrease score -1' },
+  ]);
 
   return (
     <>
@@ -717,6 +798,52 @@ function EssayFeedback() {
             <span>✨ Generate AI Feedback</span>
           )}
         </button>
+
+        {/* AO Legend Toggle */}
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => setShowAoLegend(v => !v)}
+            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <span>{showAoLegend ? '▼' : '▶'}</span>
+            <span>Assessment Objectives (AO) Guide</span>
+          </button>
+          
+          {showAoLegend && (
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">AO1: Content and Organisation</h4>
+                <p className="text-sm text-blue-800">
+                  • Identify and interpret explicit and implicit information and ideas<br />
+                  • Select and synthesise evidence from different texts<br />
+                  • Communicate clearly, effectively and imaginatively
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">AO2: Language, Structure and Form</h4>
+                <p className="text-sm text-blue-800">
+                  • Explain and analyse how writers use language and structure to achieve effects<br />
+                  • Use relevant subject terminology to support your views
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">AO3: Context</h4>
+                <p className="text-sm text-blue-800">
+                  • Show understanding of relationships between texts and contexts<br />
+                  • Consider how context influences meaning
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-1">AO4: SPaG (Spelling, Punctuation and Grammar)</h4>
+                <p className="text-sm text-blue-800">
+                  • Use a range of vocabulary and sentence structures<br />
+                  • Use accurate spelling, punctuation and grammar
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
         
         {/* Feedback Display */}
         {feedback && (
@@ -819,12 +946,54 @@ function EssayFeedback() {
               </div>
             </div>
             
-            {/* Overall Score */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
+            {/* Overall Score with Band Analysis */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
                 <span className="text-lg font-semibold text-gray-700">Overall Score</span>
                 <span className="text-3xl font-bold text-blue-600">{feedback.overall_score}/100</span>
               </div>
+              
+              {/* GCSE Band Analysis */}
+              {bandAnalysis && (
+                <div className="mt-4 pt-4 border-t border-blue-200">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-lg">
+                      Band {bandAnalysis.overall_band}
+                    </span>
+                    <span className="text-sm text-gray-600">
+                      {bandAnalysis.overall_band === 6 ? 'Exceptional' :
+                       bandAnalysis.overall_band === 5 ? 'Secure' :
+                       bandAnalysis.overall_band === 4 ? 'Developing' :
+                       bandAnalysis.overall_band === 3 ? 'Emerging' :
+                       bandAnalysis.overall_band === 2 ? 'Limited' : 'Basic'}
+                    </span>
+                  </div>
+                  
+                  {bandAnalysis.justification && (
+                    <p className="text-sm text-gray-700 mb-4 italic">"{bandAnalysis.justification}"</p>
+                  )}
+                  
+                  {/* Assessment Objectives Breakdown */}
+                  {bandAnalysis.ao_bands && bandAnalysis.ao_bands.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="font-semibold text-gray-800 text-sm mb-2">Assessment Objectives</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {bandAnalysis.ao_bands.map((ao: any, idx: number) => (
+                          <div key={idx} className="bg-white rounded-lg p-3 border border-blue-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-semibold text-blue-700">{ao.ao}</span>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-bold">
+                                Band {ao.band}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600">{ao.comment}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Grammar Issues */}
@@ -849,12 +1018,26 @@ function EssayFeedback() {
             
             {/* Improvements */}
             <div className="border-l-4 border-yellow-500 pl-4">
-              <h4 className="text-lg font-semibold text-gray-800 mb-2">Areas for Improvement</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-lg font-semibold text-gray-800">Areas for Improvement</h4>
+                <button
+                  type="button"
+                  onClick={() => setShowCommentBank((v) => !v)}
+                  className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 border rounded"
+                >
+                  {showCommentBank ? 'Hide' : 'Show'} Comment Bank
+                </button>
+              </div>
               <ul className="list-disc pl-5 space-y-1 text-gray-700">
                 {feedback.improvements.map((improvement, idx) => (
                   <li key={idx}>{improvement}</li>
                 ))}
               </ul>
+              {showCommentBank && (
+                <div className="mt-4">
+                  <CommentBank onInsert={handleInsertComment} />
+                </div>
+              )}
             </div>
             
             {/* Criteria Matches */}
@@ -881,6 +1064,19 @@ function EssayFeedback() {
             </div>
           </div>
         )}
+
+        {/* Keyboard Shortcuts Help */}
+        <KeyboardShortcutsHelp
+          isOpen={shortcutsOpen}
+          onClose={() => setShortcutsOpen(false)}
+          shortcuts={[
+            { keys: 'Ctrl+Enter', description: 'Generate AI feedback' },
+            { keys: 'Ctrl+Shift+P', description: 'Export PDF' },
+            { keys: 'Ctrl+Shift+D', description: 'Export DOCX' },
+            { keys: 'Ctrl+↑/↓', description: 'Adjust score ±1' },
+            { keys: 'Shift+?', description: 'Toggle this help' },
+          ]}
+        />
       </div>
     </>
   );

@@ -36,6 +36,7 @@ function BatchProcessor() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [autoMatchStudents, setAutoMatchStudents] = useState(true);
+  const [aiPreMark, setAiPreMark] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isPaused = useRef(false);
@@ -222,8 +223,11 @@ function BatchProcessor() {
       ));
 
       try {
-        // Generate AI feedback
-        const aiFeedback = await generateAiFeedback(essay.content, { criteria: rubricData.criteria });
+        // Generate AI feedback if enabled
+        let aiFeedback = null;
+        if (aiPreMark) {
+          aiFeedback = await generateAiFeedback(essay.content, { criteria: rubricData.criteria });
+        }
 
         // Save essay to database
         const { data: essayDbData, error: essayError } = await supabase
@@ -243,23 +247,27 @@ function BatchProcessor() {
           throw new Error('Failed to save essay');
         }
 
-        // Save feedback to database
-        const { data: feedbackDbData, error: feedbackError } = await supabase
-          .from('feedback')
-          .insert([{
-            essay_id: essayDbData.id,
-            rubric_id: rubricId,
-            grammar_issues: aiFeedback.grammar_issues,
-            strengths: aiFeedback.strengths,
-            improvements: aiFeedback.improvements,
-            suggested_feedback: aiFeedback.suggested_feedback,
-            overall_score: aiFeedback.overall_score,
-          }])
-          .select('id')
-          .single();
+        // Save feedback to database if AI pre-mark is enabled
+        let feedbackDbData = null;
+        if (aiPreMark && aiFeedback) {
+          const { data: feedbackData, error: feedbackError } = await supabase
+            .from('feedback')
+            .insert([{
+              essay_id: essayDbData.id,
+              rubric_id: rubricId,
+              grammar_issues: aiFeedback.grammar_issues,
+              strengths: aiFeedback.strengths,
+              improvements: aiFeedback.improvements,
+              suggested_feedback: aiFeedback.suggested_feedback,
+              overall_score: aiFeedback.overall_score,
+            }])
+            .select('id')
+            .single();
 
-        if (feedbackError || !feedbackDbData) {
-          throw new Error('Failed to save feedback');
+          if (feedbackError || !feedbackData) {
+            throw new Error('Failed to save feedback');
+          }
+          feedbackDbData = feedbackData;
         }
 
         // Update essay status to completed
@@ -268,8 +276,8 @@ function BatchProcessor() {
             ? { 
                 ...e, 
                 status: 'completed', 
-                score: aiFeedback.overall_score,
-                feedbackId: feedbackDbData.id,
+                score: aiFeedback?.overall_score,
+                feedbackId: feedbackDbData?.id,
               } 
             : e
         ));
@@ -441,20 +449,41 @@ function BatchProcessor() {
               </div>
               
               <div>
-                <label className="block font-medium text-gray-700 mb-2">Status</label>
-                <div className="flex gap-4">
-                  <div className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
-                    <p className="text-sm text-gray-600">Total</p>
-                    <p className="text-2xl font-bold text-gray-900">{essays.length}</p>
+                <label className="block font-medium text-gray-700 mb-2">Options</label>
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={aiPreMark}
+                      onChange={e => setAiPreMark(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      disabled={processing}
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      AI pre-mark on upload <span className="text-gray-500">(generate feedback automatically)</span>
+                    </span>
+                  </label>
+                  <div className="text-xs text-gray-500 ml-6">
+                    When enabled, AI feedback is generated and saved for each essay. Disable to upload without marking.
                   </div>
-                  <div className="bg-green-50 rounded-lg px-4 py-3 flex-1">
-                    <p className="text-sm text-green-600">Completed</p>
-                    <p className="text-2xl font-bold text-green-600">{completedCount}</p>
-                  </div>
-                  <div className="bg-red-50 rounded-lg px-4 py-3 flex-1">
-                    <p className="text-sm text-red-600">Errors</p>
-                    <p className="text-2xl font-bold text-red-600">{errorCount}</p>
-                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6">
+              <label className="block font-medium text-gray-700 mb-2">Status</label>
+              <div className="flex gap-4">
+                <div className="bg-gray-50 rounded-lg px-4 py-3 flex-1">
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">{essays.length}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg px-4 py-3 flex-1">
+                  <p className="text-sm text-green-600">Completed</p>
+                  <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                </div>
+                <div className="bg-red-50 rounded-lg px-4 py-3 flex-1">
+                  <p className="text-sm text-red-600">Errors</p>
+                  <p className="text-2xl font-bold text-red-600">{errorCount}</p>
                 </div>
               </div>
             </div>

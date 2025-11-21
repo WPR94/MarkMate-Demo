@@ -27,6 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    // Guard: global timeout fallback to avoid perpetual loading states
+    const loadingWatchdog = setTimeout(() => {
+      if (mounted) {
+        console.warn('[AuthContext] Watchdog: forcing loading=false after timeout');
+        setLoading(false);
+      }
+    }, 8000);
 
     const adminEmailsRaw = (import.meta.env.VITE_ADMIN_EMAILS || '').trim();
     const adminEmailSet = new Set(
@@ -38,14 +45,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return adminEmailSet.has(email.toLowerCase());
     };
 
+    const withTimeout = async <T,>(p: Promise<T>, ms = 5000, label = 'operation'): Promise<T> => {
+      let timer: any;
+      try {
+        const result = await Promise.race<T | '___TIMEOUT___'>([
+          p,
+          new Promise<'___TIMEOUT___'>(resolve => (timer = setTimeout(() => resolve('___TIMEOUT___'), ms))),
+        ]);
+        if (result === '___TIMEOUT___') {
+          throw new Error(`[timeout] ${label} exceeded ${ms}ms`);
+        }
+        return result as T;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
     const fetchOrCreateProfile = async (currentUser: import('@supabase/supabase-js').User) => {
       try {
         console.log('[AuthContext] Fetching profile for user', currentUser.id);
-        const { data: profileData, error: selectError } = await supabase
+        const { data: profileData, error: selectError } = await withTimeout(
+          supabase
           .from('profiles')
           .select('*')
           .eq('user_id', currentUser.id)
-          .single();
+          .single(),
+          5000,
+          'profiles select'
+        );
 
         console.log('[AuthContext] Profile query result:', { profileData, selectError });
 
@@ -53,13 +80,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // If no row found create it
           if ((selectError as any).code === 'PGRST116' || selectError.message.includes('No rows')) {
             console.warn('[AuthContext] No profile row found, creating one...');
-            const { error: insertError } = await supabase.from('profiles').insert({
+            const { error: insertError } = await withTimeout(
+              supabase.from('profiles').insert({
               id: currentUser.id,
               user_id: currentUser.id,
               email: currentUser.email,
               full_name: (currentUser as any).user_metadata?.full_name || null,
               is_admin: isAdminOverride(currentUser.email) || false
-            });
+            }),
+              5000,
+              'profiles insert'
+            );
             if (insertError) {
               console.error('[AuthContext] Failed to create profile row', insertError);
               // Fallback stub profile if override applies
@@ -76,11 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
               return null;
             }
-            const { data: newProfile } = await supabase
+            const { data: newProfile } = await withTimeout(
+              supabase
               .from('profiles')
               .select('*')
               .eq('user_id', currentUser.id)
-              .single();
+              .single(),
+              5000,
+              'profiles select after insert'
+            );
             return newProfile || null;
           } else {
             console.error('[AuthContext] Profile select error', selectError);
@@ -141,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await withTimeout(supabase.auth.getSession(), 5000, 'auth.getSession');
         if (!mounted) return;
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
@@ -171,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
       sub?.subscription.unsubscribe();
+      clearTimeout(loadingWatchdog);
     };
   }, []);
 

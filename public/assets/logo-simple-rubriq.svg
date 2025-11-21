@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="360" height="80" viewBox="0 0 360 80" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Simple RubriQ Logo</title>
+  <desc id="desc">Rounded blue square with rubric lines and a gold checkmark, followed by the word Simple RubriQ</desc>
+  <!-- Icon -->
+  <g transform="translate(0,20)">
+    <rect x="0" y="0" width="40" height="40" rx="8" fill="#1E3A8A" />
+    <rect x="8" y="11" width="18" height="2.5" rx="1.25" fill="#FFFFFF" />
+    <rect x="8" y="18" width="18" height="2.5" rx="1.25" fill="#FFFFFF" />
+    <rect x="8" y="25" width="18" height="2.5" rx="1.25" fill="#FFFFFF" />
+    <path d="M24 26 l4 4 l8 -10" stroke="#FBBF24" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <!-- Wordmark -->
+  <text x="56" y="48" font-family="Poppins, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="28" font-weight="600" fill="#1E3A8A">Simple RubriQ</text>
+</svg>

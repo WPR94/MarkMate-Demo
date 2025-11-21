@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import { getTemplatesByBoard, getTemplate, GCSERubricTemplate } from '../data/gcseTemplates';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import notify from '../utils/notify';
@@ -20,6 +21,10 @@ interface RubricRow {
   criteria: any; // jsonb
   isDefault?: boolean;
   created_at?: string;
+  exam_board?: string | null;
+  template_id?: string | null;
+  version?: number;
+  cloned_from?: string | null;
 }
 
 function Rubrics() {
@@ -30,9 +35,15 @@ function Rubrics() {
   const [description, setDescription] = useState('');
   const [criteria, setCriteria] = useState<Criterion[]>([{ id: 0, category: '', maxPoints: 10 }]);
   const [isDefault, setIsDefault] = useState(false);
+  // Phase 1 additions
+  const [examBoard, setExamBoard] = useState<string>('AQA');
+  const [templateId, setTemplateId] = useState<string>('');
+  const [availableTemplates, setAvailableTemplates] = useState<GCSERubricTemplate[]>(getTemplatesByBoard('AQA'));
   const [uploading, setUploading] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [rubricToDelete, setRubricToDelete] = useState<string | null>(null);
+  const [essayCount, setEssayCount] = useState<number>(0);
+  const [feedbackCount, setFeedbackCount] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const criteriaJson = useMemo(() => (
@@ -44,7 +55,7 @@ function Rubrics() {
     const load = async () => {
       const { data, error } = await supabase
         .from('rubrics')
-        .select('id, name, subject, criteria, created_at')
+        .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
         .eq('teacher_id', user.id)
         .order('created_at', { ascending: false });
       if (error) {
@@ -76,6 +87,9 @@ function Rubrics() {
     setDescription('');
     setCriteria([{ id: 0, category: '', maxPoints: 10 }]);
     setIsDefault(false);
+    setExamBoard('AQA');
+    setTemplateId('');
+    setAvailableTemplates(getTemplatesByBoard('AQA'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,9 +118,12 @@ function Rubrics() {
           subject,
           criteria: criteriaJson,
           teacher_id: user.id,
+          exam_board: examBoard,
+          template_id: templateId || null,
+          version: 1,
         },
       ])
-      .select('id, name, subject, criteria, created_at')
+      .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
       .single();
     if (error) {
       console.error('Rubric save error:', error);
@@ -158,8 +175,24 @@ function Rubrics() {
     }
   };
 
-  const openDeleteModal = (id: string) => {
+  const openDeleteModal = async (id: string) => {
     setRubricToDelete(id);
+    
+    // Count essays and feedback using this rubric
+    try {
+      const [essaysResult, feedbackResult] = await Promise.all([
+        supabase.from('essays').select('id', { count: 'exact', head: true }).eq('rubric_id', id),
+        supabase.from('feedback').select('id', { count: 'exact', head: true }).eq('rubric_id', id)
+      ]);
+      
+      setEssayCount(essaysResult.count || 0);
+      setFeedbackCount(feedbackResult.count || 0);
+    } catch (error) {
+      console.error('Error counting dependencies:', error);
+      setEssayCount(0);
+      setFeedbackCount(0);
+    }
+    
     setDeleteModalOpen(true);
   };
 
@@ -167,39 +200,26 @@ function Rubrics() {
     if (!rubricToDelete) return;
 
     try {
-      // Check if rubric is being used by any essays
-      const { data: essays, error: essaysError } = await supabase
-        .from('essays')
-        .select('id')
-        .eq('rubric_id', rubricToDelete)
-        .limit(1);
+      // If there are essays or feedback, unlink them (set rubric_id to NULL)
+      if (essayCount > 0) {
+        const { error: essayError } = await supabase
+          .from('essays')
+          .update({ rubric_id: null })
+          .eq('rubric_id', rubricToDelete);
 
-      if (essaysError) throw essaysError;
-
-      if (essays && essays.length > 0) {
-        notify.error('Cannot delete rubric: it is being used by existing essays. Delete those essays first.');
-        setDeleteModalOpen(false);
-        setRubricToDelete(null);
-        return;
+        if (essayError) throw essayError;
       }
 
-      // Check if rubric is being used by any feedback
-      const { data: feedback, error: feedbackError } = await supabase
-        .from('feedback')
-        .select('id')
-        .eq('rubric_id', rubricToDelete)
-        .limit(1);
+      if (feedbackCount > 0) {
+        const { error: feedbackError } = await supabase
+          .from('feedback')
+          .update({ rubric_id: null })
+          .eq('rubric_id', rubricToDelete);
 
-      if (feedbackError) throw feedbackError;
-
-      if (feedback && feedback.length > 0) {
-        notify.error('Cannot delete rubric: it has associated feedback. Delete the feedback first.');
-        setDeleteModalOpen(false);
-        setRubricToDelete(null);
-        return;
+        if (feedbackError) throw feedbackError;
       }
 
-      // Now safe to delete
+      // Now safe to delete the rubric
       const { error } = await supabase
         .from('rubrics')
         .delete()
@@ -208,15 +228,106 @@ function Rubrics() {
       if (error) throw error;
 
       setRubrics(prev => prev.filter(r => r.id !== rubricToDelete));
-      notify.success('Rubric deleted successfully');
+      
+      if (essayCount > 0 || feedbackCount > 0) {
+        notify.success(`Rubric deleted. ${essayCount} essays and ${feedbackCount} feedback entries were unlinked.`);
+      } else {
+        notify.success('Rubric deleted successfully');
+      }
+      
       setDeleteModalOpen(false);
       setRubricToDelete(null);
+      setEssayCount(0);
+      setFeedbackCount(0);
     } catch (error: any) {
       console.error('Error deleting rubric:', error);
       notify.error(`Failed to delete rubric: ${error.message || 'Unknown error'}`);
       setDeleteModalOpen(false);
       setRubricToDelete(null);
+      setEssayCount(0);
+      setFeedbackCount(0);
     }
+  };
+
+  const handleClone = async (rubricId: string) => {
+    if (!user) {
+      notify.error('Please sign in to clone rubrics');
+      return;
+    }
+
+    const original = rubrics.find(r => r.id === rubricId);
+    if (!original) return;
+
+    try {
+      // Get current version or default to 1
+      const { data: versionData } = await supabase
+        .from('rubrics')
+        .select('version')
+        .eq('id', rubricId)
+        .single();
+      
+      const currentVersion = versionData?.version || 1;
+
+      // Create cloned rubric with incremented version
+      const { data, error } = await supabase
+        .from('rubrics')
+        .insert([{
+          name: `${original.name} (v${currentVersion + 1})`,
+          subject: original.subject,
+          criteria: original.criteria,
+          teacher_id: user.id,
+          exam_board: (original as any).exam_board || null,
+          template_id: (original as any).template_id || null,
+          version: currentVersion + 1,
+          cloned_from: rubricId,
+        }])
+        .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
+        .single();
+
+      if (error) throw error;
+
+      setRubrics(prev => [data as RubricRow, ...prev]);
+      notify.success(`Rubric cloned as version ${currentVersion + 1}`);
+    } catch (error: any) {
+      console.error('Clone error:', error);
+      notify.error(`Failed to clone rubric: ${error.message}`);
+    }
+  };
+
+  // Filtering & grouping state
+  const [examBoardFilter, setExamBoardFilter] = useState<string>('All');
+  const [groupView, setGroupView] = useState<boolean>(true);
+  const [lineageModalOpen, setLineageModalOpen] = useState(false);
+  const [lineageRubrics, setLineageRubrics] = useState<RubricRow[]>([]);
+  const [lineageBaseName, setLineageBaseName] = useState<string>('');
+
+  const filteredRubrics = useMemo(() => {
+    return rubrics.filter(r => examBoardFilter === 'All' || (r.exam_board || 'Unknown') === examBoardFilter);
+  }, [rubrics, examBoardFilter]);
+
+  const groupedRubrics = useMemo(() => {
+    if (!groupView) return [] as { base: string; items: RubricRow[] }[];
+    const groups: Record<string, RubricRow[]> = {};
+    filteredRubrics.forEach(r => {
+      // Extract base name by stripping a trailing (vN)
+      const base = r.name.replace(/\(v\d+\)$/,'').trim();
+      if (!groups[base]) groups[base] = [];
+      groups[base].push(r);
+    });
+    return Object.entries(groups).map(([base, items]) => ({
+      base,
+      items: items.sort((a,b) => (b.version || 1) - (a.version || 1))
+    })).sort((a,b) => a.base.localeCompare(b.base));
+  }, [filteredRubrics, groupView]);
+
+  const openLineageModal = (rubric: RubricRow) => {
+    // Determine base name and collect all rubrics sharing base name
+    const base = rubric.name.replace(/\(v\d+\)$/,'').trim();
+    const related = rubrics.filter(r => r.name.replace(/\(v\d+\)$/,'').trim() === base)
+      .sort((a,b) => (a.version || 1) - (b.version || 1));
+    setLineageBaseName(base);
+    setLineageRubrics(related);
+    setLineageModalOpen(true);
   };
 
   return (
@@ -225,6 +336,55 @@ function Rubrics() {
       <div className="p-4 sm:p-6 max-w-5xl mx-auto">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Rubrics Manager</h2>
         <form onSubmit={handleSubmit} className="border p-4 sm:p-6 bg-gray-50 rounded mb-6 space-y-4">
+          {/* Exam Board & Template Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block font-semibold mb-1">Exam Board</label>
+              <select aria-label="Exam Board"
+                value={examBoard}
+                onChange={e => {
+                  const board = e.target.value;
+                  setExamBoard(board);
+                  const list = getTemplatesByBoard(board === 'WJEC Eduqas' ? 'WJEC' : board);
+                  setAvailableTemplates(list);
+                  setTemplateId('');
+                }}
+                className="border p-2 w-full"
+              >
+                {['AQA','Edexcel','OCR','WJEC','WJEC Eduqas'].map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block font-semibold mb-1">GCSE Template</label>
+              <select aria-label="GCSE Template"
+                value={templateId}
+                onChange={e => {
+                  const id = e.target.value;
+                  setTemplateId(id);
+                  if (id) {
+                    const tpl = getTemplate(id);
+                    if (tpl) {
+                      // Apply template to form
+                      if (!name) setName(`${tpl.subject} (${tpl.examBoard})`);
+                      // Map bands to criteria
+                      const mapped: Criterion[] = tpl.bands.map((b, idx) => ({ id: idx, category: `Band ${b.band} – ${b.level}`, maxPoints: b.band }));
+                      setCriteria(mapped.length ? mapped : [{ id: 0, category: '', maxPoints: 10 }]);
+                      // Prepend AO info to description if empty
+                      if (!description) {
+                        setDescription(tpl.assessmentObjectives.map(a => `${a.ao}: ${a.description}`).join(' | '));
+                      }
+                    }
+                  }
+                }}
+                className="border p-2 w-full"
+              >
+                <option value="">(Optional) Select template…</option>
+                {availableTemplates.map(t => (
+                  <option key={t.id} value={t.id}>{t.subject} – {t.examBoard}</option>
+                ))}
+              </select>
+            </div>
+          </div>
           {/* File Upload Section */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start justify-between mb-2">
@@ -295,6 +455,11 @@ function Rubrics() {
           </div>
           <div>
             <label className="block font-semibold mb-2">Criteria</label>
+            {templateId && (
+              <div className="text-xs mb-2 p-2 bg-indigo-50 border border-indigo-200 rounded">
+                Loaded template <strong>{templateId}</strong>. You can still edit criteria below.
+              </div>
+            )}
             {criteria.map((c) => (
               <div key={c.id} className="flex flex-col sm:flex-row gap-2 mb-2 sm:items-center">
                 <input
@@ -331,43 +496,192 @@ function Rubrics() {
           </div>
           <button type="submit" className="bg-green-600 text-white py-2 px-4 rounded">Save Rubric</button>
         </form>
-        <h3 className="text-xl font-bold mb-2">Your Rubrics</h3>
-        <div className="space-y-4">
-          {rubrics.map(r => (
-            <div key={r.id} className="border p-4 rounded bg-white shadow-sm">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-lg">{r.name} {r.subject ? `(${r.subject})` : ''}</h4>
-                  {Array.isArray(r.criteria) && (
-                    <ul className="list-disc pl-5 mt-2">
-                      {r.criteria.map((c: any, idx: number) => (
-                        <li key={idx}>{c.category} — {c.maxPoints} pts</li>
-                      ))}
-                    </ul>
-                  )}
+        <h3 className="text-xl font-bold mb-4">Your Rubrics</h3>
+        {/* Controls */}
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
+          <div>
+            <label className="text-sm font-semibold mr-2">Exam Board:</label>
+            <select aria-label="Exam Board Filter"
+              value={examBoardFilter}
+              onChange={e => setExamBoardFilter(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="All">All</option>
+              {Array.from(new Set(rubrics.map(r => r.exam_board).filter(Boolean))).map(b => (
+                <option key={b as string}>{b as string}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGroupView(v => !v)}
+            className="text-sm px-3 py-2 rounded border bg-white hover:bg-gray-50"
+          >
+            {groupView ? 'Switch to Flat View' : 'Group by Version Lineage'}
+          </button>
+          <span className="text-xs text-gray-600">Showing {filteredRubrics.length} rubric(s)</span>
+        </div>
+        {/* Grouped or flat display */}
+        {groupView ? (
+          <div className="space-y-6">
+            {groupedRubrics.map(group => (
+              <div key={group.base} className="border rounded bg-gray-50">
+                <div className="px-4 py-2 border-b flex items-center justify-between">
+                  <h4 className="font-semibold">{group.base}</h4>
+                  <span className="text-xs text-gray-500">{group.items.length} version(s)</span>
                 </div>
+                <div className="divide-y">
+                  {group.items.map(r => (
+                    <div key={r.id} className="p-4 bg-white flex justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{r.name}</span>
+                          {r.version && r.version > 1 && (
+                            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">v{r.version}</span>
+                          )}
+                          {r.exam_board && (
+                            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">{r.exam_board}</span>
+                          )}
+                        </div>
+                        {Array.isArray(r.criteria) && (
+                          <ul className="list-disc pl-5 mt-2 text-sm">
+                            {r.criteria.slice(0,3).map((c: any, idx: number) => (
+                              <li key={idx}>{c.category} — {c.maxPoints} pts</li>
+                            ))}
+                            {r.criteria.length > 3 && (
+                              <li className="italic text-gray-500">…{r.criteria.length - 3} more</li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4 text-right">
+                        <button
+                          onClick={() => handleClone(r.id)}
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >Clone</button>
+                        <button
+                          onClick={() => openLineageModal(r)}
+                          className="text-indigo-600 hover:text-indigo-800 text-sm"
+                        >Lineage</button>
+                        <button
+                          onClick={() => openDeleteModal(r.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {groupedRubrics.length === 0 && <p className="text-gray-500">No rubrics match this filter.</p>}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredRubrics.map(r => (
+              <div key={r.id} className="border p-4 rounded bg-white shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-lg">{r.name} {r.subject ? `(${r.subject})` : ''}</h4>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {r.exam_board && <span className="text-xs bg-gray-200 px-2 py-0.5 rounded">{r.exam_board}</span>}
+                      {r.version && r.version > 1 && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">v{r.version}</span>}
+                    </div>
+                    {Array.isArray(r.criteria) && (
+                      <ul className="list-disc pl-5 mt-2">
+                        {r.criteria.map((c: any, idx: number) => (
+                          <li key={idx}>{c.category} — {c.maxPoints} pts</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <button
+                      onClick={() => handleClone(r.id)}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                      title="Clone this rubric"
+                    >
+                      Clone
+                    </button>
+                    <button
+                      onClick={() => openLineageModal(r)}
+                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                      title="View version lineage"
+                    >
+                      Lineage
+                    </button>
+                    <button
+                      onClick={() => openDeleteModal(r.id)}
+                      className="text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredRubrics.length === 0 && <p className="text-gray-500">No rubrics match this filter.</p>}
+          </div>
+        )}
+      </div>
+      {lineageModalOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="lineage-title" className="fixed inset-0 bg-black/40 flex items-start sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b flex justify-between items-center">
+              <h4 id="lineage-title" className="font-semibold text-lg">Version Lineage – {lineageBaseName}</h4>
+              <button onClick={() => setLineageModalOpen(false)} aria-label="Close lineage modal" className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-y-auto">
+              {lineageRubrics.length === 0 && <p className="text-gray-500">No versions found.</p>}
+              {lineageRubrics.length > 0 && (
+                <table className="w-full text-sm border">
+                  <thead>
+                    <tr className="bg-gray-100 text-left">
+                      <th className="p-2 border">Version</th>
+                      <th className="p-2 border">Name</th>
+                      <th className="p-2 border">Exam Board</th>
+                      <th className="p-2 border">Criteria</th>
+                      <th className="p-2 border">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineageRubrics.map(r => (
+                      <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="p-2 border">{r.version || 1}</td>
+                        <td className="p-2 border">{r.name}</td>
+                        <td className="p-2 border">{r.exam_board || '—'}</td>
+                        <td className="p-2 border">{Array.isArray(r.criteria) ? r.criteria.length : '—'}</td>
+                        <td className="p-2 border">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div className="mt-4 flex justify-end gap-3">
                 <button
-                  onClick={() => openDeleteModal(r.id)}
-                  className="ml-4 text-red-600 hover:text-red-800 font-medium"
-                >
-                  Delete
-                </button>
+                  onClick={() => setLineageModalOpen(false)}
+                  className="px-4 py-2 rounded border bg-white hover:bg-gray-50"
+                >Close</button>
               </div>
             </div>
-          ))}
-          {rubrics.length === 0 && <p className="text-gray-500">No rubrics created yet.</p>}
+          </div>
         </div>
-      </div>
+      )}
 
       <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {
           setDeleteModalOpen(false);
           setRubricToDelete(null);
+          setEssayCount(0);
+          setFeedbackCount(0);
         }}
         onConfirm={handleDelete}
         title="Delete Rubric"
-        message="Are you sure you want to delete this rubric? This action cannot be undone."
+        message={
+          essayCount > 0 || feedbackCount > 0
+            ? `This rubric is used by ${essayCount} essay(s) and ${feedbackCount} feedback record(s). Deleting it will unlink these items (they won't be deleted, just have no rubric assigned). Continue?`
+            : "Are you sure you want to delete this rubric? This action cannot be undone."
+        }
         type="danger"
         confirmText="Delete"
         cancelText="Cancel"
