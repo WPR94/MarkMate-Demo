@@ -31,7 +31,17 @@ Steps to push to GitHub and connect to Vercel
    - Set any Environment Variables required by your app (e.g., SUPABASE_URL, SUPABASE_ANON_KEY) in the Vercel project settings → Environment Variables.
    - Deploy.
 
-3. Preview and production:
+3. **IMPORTANT: Add Environment Variables**
+   
+   In Vercel project settings → Environment Variables, add:
+   
+   - `OPENAI_API_KEY` = `sk-...` (your OpenAI key - **NO VITE_ prefix**)
+   - `VITE_SUPABASE_URL` = Your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` = Your Supabase anon key
+   
+   Apply to: **All environments** (Production, Preview, Development)
+
+4. Preview and production:
    - After import, Vercel will run a preview deployment on every branch and a production deployment for the branch you choose (typically `main`).
    - Check the Vercel dashboard for build logs if something fails.
 
