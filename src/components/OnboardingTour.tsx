@@ -150,23 +150,51 @@ export function OnboardingTour({ steps, onComplete, onSkip }: OnboardingTourProp
 
   return (
     <>
-      {/* Overlay backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/60 z-40 transition-opacity duration-500 backdrop-blur-sm"
-        style={{ animation: 'fadeIn 0.3s ease-in' }}
-      />
+      {/* Overlay backdrop with cutout for spotlight */}
+      <div className="fixed inset-0 z-40 pointer-events-none">
+        <svg className="w-full h-full" style={{ animation: 'fadeIn 0.3s ease-in' }}>
+          <defs>
+            <mask id="spotlight-mask">
+              {/* White = visible, Black = hidden */}
+              <rect x="0" y="0" width="100%" height="100%" fill="white" />
+              {targetPosition && (
+                <rect
+                  x={targetPosition.left - 8}
+                  y={targetPosition.top - 8}
+                  width={targetPosition.width + 16}
+                  height={targetPosition.height + 16}
+                  rx="12"
+                  fill="black"
+                />
+              )}
+            </mask>
+          </defs>
+          {/* Dark overlay with mask applied */}
+          <rect
+            x="0"
+            y="0"
+            width="100%"
+            height="100%"
+            fill="rgba(0, 0, 0, 0.75)"
+            mask="url(#spotlight-mask)"
+          />
+        </svg>
+      </div>
 
       {/* Highlight ring around target element */}
       {targetPosition && (
         <>
-          {/* Pulsing ring animation */}
+          {/* Outer glow */}
+          <div
+            className="fixed z-40 rounded-lg pointer-events-none transition-all duration-300"
+            style={{
+              ...getHighlightStyle(),
+              boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.5), 0 0 30px 10px rgba(59, 130, 246, 0.3)',
+            }}
+          />
+          {/* Animated ring */}
           <div
             className="fixed z-40 border-4 border-blue-500 rounded-lg pointer-events-none animate-pulse"
-            style={getHighlightStyle()}
-          />
-          {/* Solid ring */}
-          <div
-            className="fixed z-40 border-4 border-blue-400 rounded-lg pointer-events-none shadow-lg"
             style={getHighlightStyle()}
           />
         </>
