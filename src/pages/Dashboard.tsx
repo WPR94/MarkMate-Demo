@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -237,7 +237,7 @@ function Dashboard() {
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Feedback Trend (Last 30)</h3>
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <LineChart data={feedbackData.slice(0, 10).reverse()}>
+                      <LineChart data={useMemo(() => feedbackData.slice(0, 10).reverse(), [feedbackData])}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="created_at" 
@@ -261,13 +261,13 @@ function Dashboard() {
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <BarChart data={[
+                      <BarChart data={useMemo(() => ([
                         { range: '0-20', count: feedbackData.filter(f => f.overall_score >= 0 && f.overall_score < 20).length },
                         { range: '20-40', count: feedbackData.filter(f => f.overall_score >= 20 && f.overall_score < 40).length },
                         { range: '40-60', count: feedbackData.filter(f => f.overall_score >= 40 && f.overall_score < 60).length },
                         { range: '60-80', count: feedbackData.filter(f => f.overall_score >= 60 && f.overall_score < 80).length },
                         { range: '80-100', count: feedbackData.filter(f => f.overall_score >= 80 && f.overall_score <= 100).length },
-                      ]}>
+                      ]), [feedbackData])}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="range" fontSize={12} />
                         <YAxis fontSize={12} />

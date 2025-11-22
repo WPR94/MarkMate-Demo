@@ -1,20 +1,22 @@
 import { Routes, Route } from 'react-router-dom';
+import { Suspense, lazy, useEffect } from 'react';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
-import EssayFeedback from './pages/EssayFeedback';
-import Dashboard from './pages/Dashboard';
-import Students from './pages/Students';
-import Rubrics from './pages/Rubrics';
-import Analytics from './pages/Analytics';
-import BatchProcessor from './pages/BatchProcessor';
-import Calibration from './pages/Calibration';
-import FeedbackHistory from './pages/FeedbackHistory';
-import Demo from './pages/Demo';
-import DashboardDemo from './pages/DashboardDemo';
-import About from './pages/About';
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import DataProcessingAgreement from './pages/DataProcessingAgreement';
+// Lazy-load heavier routes to reduce initial bundle
+const EssayFeedback = lazy(() => import('./pages/EssayFeedback'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Students = lazy(() => import('./pages/Students'));
+const Rubrics = lazy(() => import('./pages/Rubrics'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const BatchProcessor = lazy(() => import('./pages/BatchProcessor'));
+const Calibration = lazy(() => import('./pages/Calibration'));
+const FeedbackHistory = lazy(() => import('./pages/FeedbackHistory'));
+const Demo = lazy(() => import('./pages/Demo'));
+const DashboardDemo = lazy(() => import('./pages/DashboardDemo'));
+const About = lazy(() => import('./pages/About'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+const Terms = lazy(() => import('./pages/Terms'));
+const DataProcessingAgreement = lazy(() => import('./pages/DataProcessingAgreement'));
 import AccountSettings from './pages/AccountSettings';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
@@ -27,7 +29,6 @@ import { FeedbackButton } from './components/FeedbackButton';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
-import { useEffect } from 'react';
 import { testSupabaseConnection } from './lib/supabaseClient';
 
 function App() {
@@ -52,31 +53,31 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         {/* Protected routes */}
         <Route element={<ProtectedRoute />}> 
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/essay-feedback" element={<EssayFeedback />} />
-          <Route path="/feedback-history" element={<FeedbackHistory />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/rubrics" element={<Rubrics />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/batch" element={<BatchProcessor />} />
-          <Route path="/calibration" element={<Calibration />} />
+          <Route path="/dashboard" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Dashboard /></Suspense>} />
+          <Route path="/essay-feedback" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><EssayFeedback /></Suspense>} />
+          <Route path="/feedback-history" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><FeedbackHistory /></Suspense>} />
+          <Route path="/students" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Students /></Suspense>} />
+          <Route path="/rubrics" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Rubrics /></Suspense>} />
+          <Route path="/analytics" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Analytics /></Suspense>} />
+          <Route path="/batch" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><BatchProcessor /></Suspense>} />
+          <Route path="/calibration" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Calibration /></Suspense>} />
         </Route>
         {/* Public */}
-        <Route path="/demo" element={<Demo />} />
-  <Route path="/dashboard-demo" element={<DashboardDemo />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/dpa" element={<DataProcessingAgreement />} />
+        <Route path="/demo" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Demo /></Suspense>} />
+        <Route path="/dashboard-demo" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><DashboardDemo /></Suspense>} />
+        <Route path="/about" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><About /></Suspense>} />
+        <Route path="/privacy" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Privacy /></Suspense>} />
+        <Route path="/terms" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><Terms /></Suspense>} />
+        <Route path="/dpa" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><DataProcessingAgreement /></Suspense>} />
         {/* Protected Settings */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/settings" element={<AccountSettings />} />
+          <Route path="/settings" element={<Suspense fallback={<div className='p-6'>Loading…</div>}><AccountSettings /></Suspense>} />
         </Route>
         {/* Admin Routes */}
-        <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-        <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-        <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
-        <Route path="/admin/activity" element={<AdminRoute><AdminActivityLogs /></AdminRoute>} />
+        <Route path="/admin" element={<AdminRoute><Suspense fallback={<div className='p-6'>Loading…</div>}><AdminDashboard /></Suspense></AdminRoute>} />
+        <Route path="/admin/users" element={<AdminRoute><Suspense fallback={<div className='p-6'>Loading…</div>}><AdminUsers /></Suspense></AdminRoute>} />
+        <Route path="/admin/analytics" element={<AdminRoute><Suspense fallback={<div className='p-6'>Loading…</div>}><AdminAnalytics /></Suspense></AdminRoute>} />
+        <Route path="/admin/activity" element={<AdminRoute><Suspense fallback={<div className='p-6'>Loading…</div>}><AdminActivityLogs /></Suspense></AdminRoute>} />
       </Routes>
     </div>
   );

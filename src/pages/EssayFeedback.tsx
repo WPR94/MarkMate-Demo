@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
@@ -9,8 +9,7 @@ import { AiFeedback } from '../utils/edgeFunctions';
 import Navbar from '../components/Navbar';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { FormSkeleton } from '../components/LoadingSkeleton';
-import jsPDF from 'jspdf';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+// Heavy export libs will be lazy-loaded when needed
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
 import CommentBank from '../components/CommentBank';
 
@@ -410,10 +409,11 @@ function EssayFeedback() {
     notify.success('Ready to grade another essay!');
   };
 
-  const handleExportText = () => {
+  const handleExportText = async () => {
     if (!feedback) return;
     
     try {
+      const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 15;
@@ -549,15 +549,16 @@ function EssayFeedback() {
   const handleExportDocx = async () => {
     if (!feedback) return;
     try {
-      const paragraphs: Paragraph[] = [];
-      const pushHeading = (text: string, level: any = HeadingLevel.HEADING_2) => {
-        paragraphs.push(new Paragraph({ text, heading: level }));
+      const docx = await import('docx');
+      const paragraphs: InstanceType<typeof docx.Paragraph>[] = [];
+      const pushHeading = (text: string, level: any = docx.HeadingLevel.HEADING_2) => {
+        paragraphs.push(new docx.Paragraph({ text, heading: level }));
       };
       const pushText = (text: string) => {
-        paragraphs.push(new Paragraph({ children: [new TextRun(text)] }));
+        paragraphs.push(new docx.Paragraph({ children: [new docx.TextRun(text)] }));
       };
 
-      pushHeading('Essay Feedback Report', HeadingLevel.HEADING_1);
+      pushHeading('Essay Feedback Report', docx.HeadingLevel.HEADING_1);
       pushText(`Essay Title: ${title}`);
       pushText(`Date: ${new Date().toLocaleDateString()}`);
       pushText(`Overall Score: ${feedback.overall_score}/100`);
@@ -574,7 +575,7 @@ function EssayFeedback() {
       if (feedback.criteria_matches && feedback.criteria_matches.length > 0) {
         pushHeading('Rubric Criteria Analysis');
         feedback.criteria_matches.forEach((m) => {
-          paragraphs.push(new Paragraph({ text: m.criterion, heading: HeadingLevel.HEADING_3 }));
+          paragraphs.push(new docx.Paragraph({ text: m.criterion, heading: docx.HeadingLevel.HEADING_3 }));
           m.examples.forEach((ex) => pushText(`• ${ex}`));
         });
       }
@@ -586,8 +587,8 @@ function EssayFeedback() {
       feedback.suggested_feedback.split('\n').forEach((line) => pushText(line));
       pushText(content);
 
-      const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
-      const blob = await Packer.toBlob(doc);
+      const theDoc = new docx.Document({ sections: [{ properties: {}, children: paragraphs }] });
+      const blob = await docx.Packer.toBlob(theDoc);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -618,6 +619,8 @@ function EssayFeedback() {
         setFeedback({ ...feedback, overall_score: Math.max(0, feedback.overall_score - 1) });
       }, description: 'Decrease score -1' },
   ]);
+
+  const highlightedEssay = useMemo(() => highlightEssayText(content, feedback), [content, feedback]);
 
   return (
     <>
@@ -954,7 +957,7 @@ function EssayFeedback() {
                 </span>
               </div>
               <div className="bg-white p-4 rounded border border-gray-200 max-h-96 overflow-y-auto text-sm leading-relaxed">
-                {highlightEssayText(content, feedback)}
+                {highlightedEssay}
               </div>
             </div>
             
