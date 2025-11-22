@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabaseClient';
 
 interface Profile {
   id: string;
-  user_id?: string;
   email: string | null;
   full_name: string | null;
   is_admin: boolean;
@@ -64,15 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchOrCreateProfile = async (currentUser: import('@supabase/supabase-js').User) => {
       try {
         console.log('[AuthContext] Fetching profile for user', currentUser.id);
-        const { data: profileData, error: selectError } = await withTimeout(
-          supabase
+        const { data: profileData, error: selectError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', currentUser.id)
-          .single(),
-          5000,
-          'profiles select'
-        );
+          .eq('id', currentUser.id)
+          .single();
 
         console.log('[AuthContext] Profile query result:', { profileData, selectError });
 
@@ -80,24 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // If no row found create it
           if ((selectError as any).code === 'PGRST116' || selectError.message.includes('No rows')) {
             console.warn('[AuthContext] No profile row found, creating one...');
-            const { error: insertError } = await withTimeout(
-              supabase.from('profiles').insert({
+            const { error: insertError } = await supabase.from('profiles').insert({
               id: currentUser.id,
-              user_id: currentUser.id,
               email: currentUser.email,
               full_name: (currentUser as any).user_metadata?.full_name || null,
               is_admin: isAdminOverride(currentUser.email) || false
-            }),
-              5000,
-              'profiles insert'
-            );
+            });
             if (insertError) {
               console.error('[AuthContext] Failed to create profile row', insertError);
               // Fallback stub profile if override applies
               if (isAdminOverride(currentUser.email)) {
                 return {
                   id: currentUser.id,
-                  user_id: currentUser.id,
                   email: currentUser.email,
                   full_name: null,
                   is_admin: true,
@@ -107,15 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
               return null;
             }
-            const { data: newProfile } = await withTimeout(
-              supabase
+            const { data: newProfile } = await supabase
               .from('profiles')
               .select('*')
-              .eq('user_id', currentUser.id)
-              .single(),
-              5000,
-              'profiles select after insert'
-            );
+              .eq('id', currentUser.id)
+              .single();
             return newProfile || null;
           } else {
             console.error('[AuthContext] Profile select error', selectError);
@@ -124,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.warn('[AuthContext] Using admin email override stub profile');
               return {
                 id: currentUser.id,
-                user_id: currentUser.id,
                 email: currentUser.email,
                 full_name: null,
                 is_admin: true,
@@ -146,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn('[AuthContext] No profile data but email override grants admin; using stub');
           return {
             id: currentUser.id,
-            user_id: currentUser.id,
             email: currentUser.email,
             full_name: null,
             is_admin: true,
@@ -162,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.warn('[AuthContext] Using stub due to fetch error + admin override');
           return {
             id: currentUser.id,
-            user_id: currentUser.id,
             email: currentUser.email,
             full_name: null,
             is_admin: true,
