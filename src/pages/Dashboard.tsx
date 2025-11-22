@@ -247,8 +247,14 @@ function Dashboard() {
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
         notify.error('Failed to load dashboard data');
-      } finally {
-        // loading set earlier to show stats quickly
+        // Ensure we exit loading state even on error
+        setStats({
+          essaysCount: 0,
+          rubricsCount: 0,
+          feedbackCount: 0,
+        });
+        setRecentFeedback([]);
+        setLoading(false);
       }
     };
 
