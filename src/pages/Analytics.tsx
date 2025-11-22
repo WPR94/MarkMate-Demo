@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -72,17 +72,15 @@ function Analytics() {
     try {
       setLoading(true);
       
-      // Load essays for this teacher
-      const { data: essays, error: essaysError } = await supabase
-        .from('essays')
-        .select('id, title, rubric_id')
-        .eq('teacher_id', user!.id)
-        .order('created_at', { ascending: false });
+      // Fast preflight: any feedback for this teacher?
+      const { count: fbCount, error: fbCountError } = await supabase
+        .from('feedback')
+        .select('id, essays!inner(teacher_id)', { count: 'exact', head: true })
+        .eq('essays.teacher_id', user!.id);
 
-      if (essaysError) throw essaysError;
+      if (fbCountError) throw fbCountError;
 
-      // If no essays yet, return early
-      if (!essays || essays.length === 0) {
+      if (!fbCount || fbCount === 0) {
         setMetrics({
           essaysGraded: 0,
           timeSavedHours: 0,
@@ -98,38 +96,44 @@ function Analytics() {
         return;
       }
 
-      const essayIds = essays.map(e => e.id);
-      const essayMap = new Map(essays.map(e => [e.id, e]));
-
-      // Load feedback for those essays
-      const { data: feedback, error: feedbackError } = await supabase
+      // Load feedback joined to essays for this teacher (limit to recent subset)
+      const { data: feedbackJoined, error: feedbackError } = await supabase
         .from('feedback')
-        .select('id, essay_id, overall_score, created_at')
-        .in('essay_id', essayIds)
-        .order('created_at', { ascending: false });
+        .select('id, essay_id, overall_score, created_at, essays!inner(id,title,rubric_id,teacher_id)')
+        .eq('essays.teacher_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (feedbackError) throw feedbackError;
 
-      // Load rubrics for name lookup
-      const { data: rubricsData, error: rubricsError } = await supabase
-        .from('rubrics')
-        .select('id, name')
-        .eq('teacher_id', user!.id);
+      const rubricIdSet = new Set<string>();
+      (feedbackJoined || []).forEach((row: any) => {
+        const rid = row.essays?.rubric_id;
+        if (rid) rubricIdSet.add(rid);
+      });
 
-      if (rubricsError) throw rubricsError;
-      const rubricMap = new Map((rubricsData || []).map(r => [r.id, r.name]));
+      // Load only used rubrics for name lookup
+      let rubricMap = new Map<string, string>();
+      if (rubricIdSet.size > 0) {
+        const { data: rubricsData, error: rubricsError } = await supabase
+          .from('rubrics')
+          .select('id, name')
+          .in('id', Array.from(rubricIdSet));
+        if (rubricsError) throw rubricsError;
+        rubricMap = new Map((rubricsData || []).map((r: any) => [r.id, r.name]));
+      }
 
       // Transform feedback data
-      const transformedFeedback: FeedbackData[] = (feedback || []).map((f: any) => {
-        const essay = essayMap.get(f.essay_id);
-        const rubricName = essay ? rubricMap.get(essay.rubric_id) || '—' : '—';
+      const transformedFeedback: FeedbackData[] = (feedbackJoined || []).map((f: any) => {
+        const essayTitle = f.essays?.title || 'Untitled Essay';
+        const rname = f.essays?.rubric_id ? rubricMap.get(f.essays.rubric_id) || '—' : '—';
         return {
           id: f.id,
           essay_id: f.essay_id,
           overall_score: f.overall_score,
           created_at: f.created_at,
-          essay_title: essay?.title || 'Untitled Essay',
-          rubric_name: rubricName,
+          essay_title: essayTitle,
+          rubric_name: rname,
         };
       });
 
@@ -266,6 +270,8 @@ function Analytics() {
   };
 
   const COLORS = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444'];
+  const COLOR_CLASSES = ['bg-violet-500','bg-pink-500','bg-amber-500','bg-emerald-500','bg-blue-500','bg-red-500'];
+  const gradeDistributionData = useMemo(() => gradeDistribution, [gradeDistribution]) as any;
 
   return (
     <>
@@ -362,7 +368,7 @@ function Analytics() {
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Grade Distribution</h3>
               <div className="w-full overflow-x-auto">
                 <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 350 : 300} minWidth={320}>
-                  <BarChart data={gradeDistribution} margin={{ top: 5, right: 10, left: -20, bottom: window.innerWidth < 768 ? 50 : 5 }}>
+                  <BarChart data={gradeDistributionData as any} margin={{ top: 5, right: 10, left: -20, bottom: window.innerWidth < 768 ? 50 : 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="range" angle={window.innerWidth < 768 ? -45 : 0} textAnchor={window.innerWidth < 768 ? 'end' : 'middle'} height={window.innerWidth < 768 ? 80 : 30} />
                     <YAxis width={window.innerWidth < 768 ? 40 : 60} />
@@ -383,8 +389,7 @@ function Analytics() {
                     {gradeDistribution.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <div 
-                          className="w-4 h-4 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                          className={`w-4 h-4 rounded-full flex-shrink-0 ${COLOR_CLASSES[idx % COLOR_CLASSES.length]}`}
                         />
                         <div>
                           <p className="text-xs text-gray-600 font-medium">{item.range}</p>
@@ -399,7 +404,7 @@ function Analytics() {
                   <ResponsiveContainer width="100%" height={300} minWidth={300}>
                     <PieChart>
                       <Pie
-                        data={gradeDistribution}
+                        data={gradeDistributionData as any}
                         dataKey="count"
                         nameKey="range"
                         cx="50%"
