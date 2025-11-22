@@ -4,36 +4,21 @@ import { supabase } from '../lib/supabaseClient';
 import Logo from '../components/Logo';
 
 function Landing() {
-  const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    // Non-blocking connection check in background
     async function checkConnection() {
       try {
-        // Just check if we can get the auth configuration
         const { data, error } = await supabase.auth.getSession();
         console.log('Supabase connection check:', { data, error });
-        
-        // Don't block on Supabase errors - just log them
         if (error) console.warn('Supabase check failed (non-blocking):', error);
-        setIsLoading(false);
       } catch (e) {
         console.error('Supabase connection error (non-blocking):', e);
-        // Don't show error - just continue loading the page
-        setIsLoading(false);
       }
     }
-    
     checkConnection();
   }, []);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-blue-500 text-white p-4 text-center flex flex-col items-center justify-center">
-        <h2>Loading...</h2>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 text-white flex flex-col">

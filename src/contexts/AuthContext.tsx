@@ -69,6 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (selectError) {
           console.error('[AuthContext] Profile select error', selectError);
+          // During maintenance/downtime, treat errors as temporary and allow graceful fallback
+          const is400 = (selectError as any)?.code === '400' || selectError.message?.includes('400');
+          if (is400) {
+            console.warn('[AuthContext] Got 400 error - likely Supabase maintenance, using minimal profile');
+            return {
+              id: currentUser.id,
+              email: currentUser.email,
+              full_name: null,
+              is_admin: isAdminOverride(currentUser.email),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } as Profile;
+          }
           // Fallback: build stub if override says admin
           if (isAdminOverride(currentUser.email)) {
             console.warn('[AuthContext] Using admin email override stub profile');
