@@ -6,7 +6,7 @@ import notify from '../utils/notify';
 import Navbar from '../components/Navbar';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { DashboardSkeleton } from '../components/LoadingSkeleton';
+import { DashboardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
 import { OnboardingTour, useOnboardingTour } from '../components/OnboardingTour';
 
@@ -34,6 +34,7 @@ function Dashboard() {
   const [recentFeedback, setRecentFeedback] = useState<RecentFeedback[]>([]);
   const [feedbackData, setFeedbackData] = useState<FeedbackData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartsLoading, setChartsLoading] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Onboarding tour
@@ -72,6 +73,16 @@ function Dashboard() {
     },
   ];
 
+  // Memoized chart datasets
+  const trendChartData = useMemo(() => feedbackData.slice(0, 10).reverse(), [feedbackData]);
+  const scoreDistributionData = useMemo(() => ([
+    { range: '0-20', count: feedbackData.filter(f => f.overall_score >= 0 && f.overall_score < 20).length },
+    { range: '20-40', count: feedbackData.filter(f => f.overall_score >= 20 && f.overall_score < 40).length },
+    { range: '40-60', count: feedbackData.filter(f => f.overall_score >= 40 && f.overall_score < 60).length },
+    { range: '60-80', count: feedbackData.filter(f => f.overall_score >= 60 && f.overall_score < 80).length },
+    { range: '80-100', count: feedbackData.filter(f => f.overall_score >= 80 && f.overall_score <= 100).length },
+  ]), [feedbackData]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts([
     {
@@ -106,8 +117,8 @@ function Dashboard() {
       try {
         setLoading(true);
 
-        // Fetch counts in parallel
-        const [essaysResult, rubricsResult, feedbackResult, recentResult, allFeedbackResult] = await Promise.all([
+        // Fetch counts + recent first for fastest first paint
+        const [essaysResult, rubricsResult, feedbackResult, recentResult] = await Promise.all([
           supabase
             .from('essays')
             .select('id', { count: 'exact', head: true })
@@ -116,32 +127,22 @@ function Dashboard() {
             .from('rubrics')
             .select('id', { count: 'exact', head: true })
             .eq('teacher_id', user.id),
-          // Count feedback for essays owned by this teacher via inner join
           supabase
             .from('feedback')
             .select('id, essays!inner(id,teacher_id)', { count: 'exact', head: true })
             .eq('essays.teacher_id', user.id),
-          // Recent feedback with essay titles, scoped to teacher via inner join
           supabase
             .from('feedback')
             .select('id, created_at, essays!inner(title,teacher_id)')
             .eq('essays.teacher_id', user.id)
             .order('created_at', { ascending: false })
             .limit(5),
-          // All feedback with scores for charts
-          supabase
-            .from('feedback')
-            .select('created_at, overall_score, essays!inner(teacher_id)')
-            .eq('essays.teacher_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(30),
         ]);
 
         if (essaysResult.error) throw essaysResult.error;
         if (rubricsResult.error) throw rubricsResult.error;
         if (feedbackResult.error) throw feedbackResult.error;
         if (recentResult.error) throw recentResult.error;
-        if (allFeedbackResult.error) throw allFeedbackResult.error;
 
         setStats({
           essaysCount: essaysResult.count ?? 0,
@@ -149,20 +150,49 @@ function Dashboard() {
           feedbackCount: feedbackResult.count ?? 0,
         });
 
-        // Transform recent feedback data
         const recent = (recentResult.data ?? []).map((item: any) => ({
           id: item.id,
           created_at: item.created_at,
           essay_title: item.essays?.title || 'Untitled Essay',
         }));
-
         setRecentFeedback(recent);
-        setFeedbackData(allFeedbackResult.data || []);
+
+        // Reveal page content now
+        setLoading(false);
+
+        // Defer charts fetch until after first paint/idle
+        const schedule = (cb: () => void) => {
+          // @ts-ignore
+          if (typeof window !== 'undefined' && window.requestIdleCallback) {
+            // @ts-ignore
+            window.requestIdleCallback(cb, { timeout: 1000 });
+          } else {
+            setTimeout(cb, 0);
+          }
+        };
+
+        schedule(async () => {
+          try {
+            setChartsLoading(true);
+            const { data, error } = await supabase
+              .from('feedback')
+              .select('created_at, overall_score, essays!inner(teacher_id)')
+              .eq('essays.teacher_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(30);
+            if (error) throw error;
+            setFeedbackData(data || []);
+          } catch (e) {
+            console.error('Failed to load chart data:', e);
+          } finally {
+            setChartsLoading(false);
+          }
+        });
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
         notify.error('Failed to load dashboard data');
       } finally {
-        setLoading(false);
+        // loading set earlier to show stats quickly
       }
     };
 
@@ -230,14 +260,19 @@ function Dashboard() {
               </div>
 
               {/* Charts Section */}
-              {feedbackData.length > 0 && (
+              {chartsLoading ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  <ChartSkeleton />
+                  <ChartSkeleton />
+                </div>
+              ) : feedbackData.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                   {/* Feedback Trend Chart */}
                   <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Feedback Trend (Last 30)</h3>
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <LineChart data={useMemo(() => feedbackData.slice(0, 10).reverse(), [feedbackData])}>
+                      <LineChart data={trendChartData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="created_at" 
@@ -261,13 +296,7 @@ function Dashboard() {
                     <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <BarChart data={useMemo(() => ([
-                        { range: '0-20', count: feedbackData.filter(f => f.overall_score >= 0 && f.overall_score < 20).length },
-                        { range: '20-40', count: feedbackData.filter(f => f.overall_score >= 20 && f.overall_score < 40).length },
-                        { range: '40-60', count: feedbackData.filter(f => f.overall_score >= 40 && f.overall_score < 60).length },
-                        { range: '60-80', count: feedbackData.filter(f => f.overall_score >= 60 && f.overall_score < 80).length },
-                        { range: '80-100', count: feedbackData.filter(f => f.overall_score >= 80 && f.overall_score <= 100).length },
-                      ]), [feedbackData])}>
+                      <BarChart data={scoreDistributionData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="range" fontSize={12} />
                         <YAxis fontSize={12} />
@@ -279,7 +308,7 @@ function Dashboard() {
                     </div>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Recent Activity */}
               <div className="bg-white rounded-lg shadow mb-8">
