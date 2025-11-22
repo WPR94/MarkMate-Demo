@@ -36,7 +36,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const cacheKey = user ? `dashboard:snapshot:${user.id}` : undefined;
-  const lastFetchRef = useRef<number>(0);
+  const hasFetchedRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Onboarding tour
@@ -115,15 +115,11 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
 
-    // Invalidate cache and force refetch when returning to dashboard
-    const now = Date.now();
-    const timeSinceLastFetch = now - lastFetchRef.current;
-    // If we fetched recently (< 2s ago), skip; otherwise force fresh
-    if (timeSinceLastFetch > 2000) {
-      if (cacheKey) localStorage.removeItem(cacheKey);
-      setLoading(true);
+    // Only clear cache on first mount to ensure fresh data after navigation
+    if (!hasFetchedRef.current && cacheKey) {
+      localStorage.removeItem(cacheKey);
     }
-    lastFetchRef.current = now;
+    hasFetchedRef.current = true;
 
     const fetchDashboardData = async () => {
       try {

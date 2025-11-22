@@ -238,6 +238,18 @@ function Analytics() {
     } catch (error: any) {
       console.error('Error loading analytics:', error);
       notify.error('Failed to load analytics data');
+      // Ensure we show empty state on error
+      setMetrics({
+        essaysGraded: 0,
+        timeSavedHours: 0,
+        averageScore: 0,
+        medianScore: 0,
+        standardDeviation: 0,
+      });
+      setFeedbackData([]);
+      setGradeDistribution([]);
+      setTrendData([]);
+      setRubricPerformance([]);
     } finally {
       setLoading(false);
     }
