@@ -58,50 +58,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchOrCreateProfile = async (currentUser: import('@supabase/supabase-js').User) => {
       try {
         console.log('[AuthContext] Fetching profile for user', currentUser.id);
+        // Use maybeSingle() instead of single() to avoid 406 errors when row doesn't exist
         const { data: profileData, error: selectError } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, email, full_name, is_admin, created_at, updated_at')
           .eq('id', currentUser.id)
-          .single();
+          .maybeSingle();
 
         console.log('[AuthContext] Profile query result:', { profileData, selectError });
 
         if (selectError) {
-          // If no row found create it
-          if ((selectError as any).code === 'PGRST116' || selectError.message.includes('No rows')) {
-            console.warn('[AuthContext] No profile row found, creating one...');
-            const { error: insertError } = await supabase.from('profiles').insert({
+          console.error('[AuthContext] Profile select error', selectError);
+          // Fallback: build stub if override says admin
+          if (isAdminOverride(currentUser.email)) {
+            console.warn('[AuthContext] Using admin email override stub profile');
+            return {
               id: currentUser.id,
               email: currentUser.email,
-              full_name: (currentUser as any).user_metadata?.full_name || null,
-              is_admin: isAdminOverride(currentUser.email) || false
-            });
-            if (insertError) {
-              console.error('[AuthContext] Failed to create profile row', insertError);
-              // Fallback stub profile if override applies
-              if (isAdminOverride(currentUser.email)) {
-                return {
-                  id: currentUser.id,
-                  email: currentUser.email,
-                  full_name: null,
-                  is_admin: true,
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                } as Profile;
-              }
-              return null;
-            }
-            const { data: newProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', currentUser.id)
-              .single();
-            return newProfile || null;
-          } else {
-            console.error('[AuthContext] Profile select error', selectError);
-            // Fallback: build stub if override says admin
+              full_name: null,
+              is_admin: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            } as Profile;
+          }
+          return null;
+        }
+
+        // maybeSingle returns null data if no row exists (without error)
+        if (!profileData) {
+          console.warn('[AuthContext] No profile row found, creating one...');
+          const { error: insertError } = await supabase.from('profiles').insert({
+            id: currentUser.id,
+            email: currentUser.email,
+            full_name: (currentUser as any).user_metadata?.full_name || null,
+            is_admin: isAdminOverride(currentUser.email) || false
+          });
+          if (insertError) {
+            console.error('[AuthContext] Failed to create profile row', insertError);
+            // Fallback stub profile if override applies
             if (isAdminOverride(currentUser.email)) {
-              console.warn('[AuthContext] Using admin email override stub profile');
               return {
                 id: currentUser.id,
                 email: currentUser.email,
@@ -113,26 +108,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             return null;
           }
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .select('id, email, full_name, is_admin, created_at, updated_at')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+          return newProfile || null;
         }
+
         console.log('[AuthContext] Returning profile:', profileData);
         // If profile exists but override says admin, ensure is_admin true client-side
         if (profileData && isAdminOverride(currentUser.email) && !profileData.is_admin) {
           console.log('[AuthContext] Elevating profile to admin via override');
           return { ...profileData, is_admin: true };
         }
-        // If no profile but override applies
-        if (!profileData && isAdminOverride(currentUser.email)) {
-          console.warn('[AuthContext] No profile data but email override grants admin; using stub');
-          return {
-            id: currentUser.id,
-            email: currentUser.email,
-            full_name: null,
-            is_admin: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          } as Profile;
-        }
-        return profileData || null;
+        return profileData;
       } catch (err) {
         console.error('[AuthContext] Unexpected profile fetch error', err);
         // Last resort stub if admin override
