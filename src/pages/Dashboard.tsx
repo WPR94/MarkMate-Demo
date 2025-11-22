@@ -35,6 +35,7 @@ function Dashboard() {
   const [feedbackData, setFeedbackData] = useState<FeedbackData[]>([]);
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
+  const cacheKey = user ? `dashboard:snapshot:${user.id}` : undefined;
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Onboarding tour
@@ -115,50 +116,90 @@ function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        setLoading(true);
+        // Show cached snapshot immediately if available
+        if (cacheKey) {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (parsed?.stats) setStats(parsed.stats);
+              if (parsed?.recentFeedback) setRecentFeedback(parsed.recentFeedback);
+              setLoading(false);
+            } catch {}
+          }
+        }
 
-        // Fetch counts + recent first for fastest first paint
-        const [essaysResult, rubricsResult, feedbackResult, recentResult] = await Promise.all([
-          supabase
-            .from('essays')
-            .select('id', { count: 'exact', head: true })
-            .eq('teacher_id', user.id),
-          supabase
-            .from('rubrics')
-            .select('id', { count: 'exact', head: true })
-            .eq('teacher_id', user.id),
-          supabase
-            .from('feedback')
-            .select('id, essays!inner(id,teacher_id)', { count: 'exact', head: true })
-            .eq('essays.teacher_id', user.id),
-          supabase
-            .from('feedback')
-            .select('id, created_at, essays!inner(title,teacher_id)')
-            .eq('essays.teacher_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(5),
-        ]);
+        // Always revalidate
+        let useRPC = true;
 
-        if (essaysResult.error) throw essaysResult.error;
-        if (rubricsResult.error) throw rubricsResult.error;
-        if (feedbackResult.error) throw feedbackResult.error;
-        if (recentResult.error) throw recentResult.error;
+        try {
+          // Prefer single RPC to reduce roundtrips
+          const { data, error } = await supabase.rpc('get_teacher_dashboard', { p_teacher_id: user.id });
+          if (error) throw error;
+          if (data) {
+            const [essaysCount, rubricsCount, feedbackCount, recentJson] = data as any;
+            const recent: RecentFeedback[] = (recentJson as any[] | null)?.map((row: any) => ({
+              id: row.id,
+              created_at: row.created_at,
+              essay_title: row.essay_title || 'Untitled Essay',
+            })) || [];
+            const newStats = { essaysCount: Number(essaysCount) || 0, rubricsCount: Number(rubricsCount) || 0, feedbackCount: Number(feedbackCount) || 0 };
+            setStats(newStats);
+            setRecentFeedback(recent);
+            setLoading(false);
+            if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ stats: newStats, recentFeedback: recent, ts: Date.now() }));
+          }
+        } catch (e) {
+          useRPC = false;
+        }
 
-        setStats({
-          essaysCount: essaysResult.count ?? 0,
-          rubricsCount: rubricsResult.count ?? 0,
-          feedbackCount: feedbackResult.count ?? 0,
-        });
+        if (!useRPC) {
+          // Fallback: Fetch counts + recent first for fastest first paint
+          const [essaysResult, rubricsResult, feedbackResult, recentResult] = await Promise.all([
+            supabase
+              .from('essays')
+              .select('id', { count: 'exact', head: true })
+              .eq('teacher_id', user.id),
+            supabase
+              .from('rubrics')
+              .select('id', { count: 'exact', head: true })
+              .eq('teacher_id', user.id),
+            supabase
+              .from('feedback')
+              .select('id, essays!inner(id,teacher_id)', { count: 'exact', head: true })
+              .eq('essays.teacher_id', user.id),
+            supabase
+              .from('feedback')
+              .select('id, created_at, essays!inner(title,teacher_id)')
+              .eq('essays.teacher_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(5),
+          ]);
 
-        const recent = (recentResult.data ?? []).map((item: any) => ({
-          id: item.id,
-          created_at: item.created_at,
-          essay_title: item.essays?.title || 'Untitled Essay',
-        }));
-        setRecentFeedback(recent);
+          if (essaysResult.error) throw essaysResult.error;
+          if (rubricsResult.error) throw rubricsResult.error;
+          if (feedbackResult.error) throw feedbackResult.error;
+          if (recentResult.error) throw recentResult.error;
+
+          const newStats = {
+            essaysCount: essaysResult.count ?? 0,
+            rubricsCount: rubricsResult.count ?? 0,
+            feedbackCount: feedbackResult.count ?? 0,
+          };
+          setStats(newStats);
+
+          const recent = (recentResult.data ?? []).map((item: any) => ({
+            id: item.id,
+            created_at: item.created_at,
+            essay_title: item.essays?.title || 'Untitled Essay',
+          }));
+          setRecentFeedback(recent);
+          setLoading(false);
+          if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ stats: newStats, recentFeedback: recent, ts: Date.now() }));
+        }
 
         // Reveal page content now
-        setLoading(false);
+        if (loading) setLoading(false);
 
         // Defer charts fetch until after first paint/idle
         const schedule = (cb: () => void) => {
