@@ -101,8 +101,12 @@ function Auth() {
 
     setLoading(true);
     setError(null);
+    // Use production URL if available, fallback to current origin
+    const redirectUrl = import.meta.env.PROD 
+      ? 'https://simplerubriq-git-main-wpr94s-projects.vercel.app/auth?reset=true'
+      : `${window.location.origin}/auth?reset=true`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?reset=true`,
+      redirectTo: redirectUrl,
     });
     setLoading(false);
     
