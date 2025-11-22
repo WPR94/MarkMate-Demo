@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import notify from '../utils/notify';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { CardSkeleton } from '../components/LoadingSkeleton';
 
 interface RubricLite { id: string; name: string; }
 interface EssayLite { id: string; title: string; content: string; rubric_id: string | null; }
@@ -22,20 +25,39 @@ function Calibration() {
   const [currentEssayId, setCurrentEssayId] = useState<string>('');
   const [scores, setScores] = useState({ ao1: 0, ao2: 0, ao3: 0, ao4: 0 });
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showExplainer, setShowExplainer] = useState(true);
 
-  useEffect(() => {
+  const loadInitial = async () => {
     if (!user) return;
-    (async () => {
-      const [{ data: rubricData }, { data: essayData }, { data: sessionData }] = await Promise.all([
+    setInitialLoading(true);
+    setFetchError(null);
+    try {
+      const [rubricRes, essayRes, sessionRes] = await Promise.all([
         supabase.from('rubrics').select('id, name').eq('teacher_id', user.id),
         supabase.from('essays').select('id, title, content, rubric_id').eq('teacher_id', user.id).limit(50),
         supabase.from('calibration_sessions').select('id, name, rubric_id, status, created_at').eq('created_by', user.id).order('created_at', { ascending: false })
       ]);
-      setRubrics((rubricData || []) as RubricLite[]);
-      setEssays((essayData || []) as EssayLite[]);
-      setSessions((sessionData || []) as CalibrationSession[]);
-    })();
+
+      if (rubricRes.error || essayRes.error || sessionRes.error) {
+        const msg = rubricRes.error?.message || essayRes.error?.message || sessionRes.error?.message || 'Failed to load data';
+        setFetchError(msg);
+      }
+
+      setRubrics((rubricRes.data || []) as RubricLite[]);
+      setEssays((essayRes.data || []) as EssayLite[]);
+      setSessions((sessionRes.data || []) as CalibrationSession[]);
+    } catch (e: any) {
+      setFetchError(e?.message || 'Unexpected error loading data');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    loadInitial();
   }, [user]);
 
   useEffect(() => {
@@ -116,10 +138,23 @@ function Calibration() {
   }, [marks]);
 
   return (
-    <>
+    <ErrorBoundary>
       <Navbar />
       <div className="p-4 max-w-6xl mx-auto">
         <h2 className="text-2xl font-bold mb-6">Calibration / Moderation</h2>
+        {initialLoading && (
+          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        )}
+        {fetchError && (
+          <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <div className="font-semibold mb-1">Couldn’t load your data</div>
+            <p className="mb-3">{fetchError}</p>
+            <button onClick={loadInitial} className="px-3 py-1 rounded bg-red-600 text-white text-sm">Retry</button>
+          </div>
+        )}
         {showExplainer && (
           <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
             <div className="flex items-start justify-between gap-4">
@@ -146,6 +181,23 @@ function Calibration() {
             </div>
           </div>
         )}
+        {/* Empty State Guidance */}
+        {!initialLoading && !fetchError && (rubrics.length === 0 || essays.length === 0) && (
+          <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <div className="font-semibold mb-2">Get ready to calibrate</div>
+            {rubrics.length === 0 && (
+              <p className="mb-2">You’ll need a rubric first. Create one on the Rubrics page.</p>
+            )}
+            {essays.length === 0 && (
+              <p className="mb-3">Add a few representative essays to include in your calibration set.</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Link to="/rubrics" className="px-3 py-1.5 rounded bg-brand-600 text-white text-sm hover:bg-brand-700">Go to Rubrics</Link>
+              <Link to="/essay-feedback" className="px-3 py-1.5 rounded border border-brand-600 text-brand-700 text-sm hover:bg-brand-50">Add Essays</Link>
+            </div>
+          </div>
+        )}
+
         {/* Create Session */}
         <div className="bg-gray-50 border rounded p-4 mb-6">
           <h3 className="font-semibold mb-2">Create Calibration Session</h3>
@@ -182,7 +234,7 @@ function Calibration() {
               </div>
             </div>
           </div>
-          <button disabled={loading} onClick={createSession} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
+          <button disabled={loading || rubrics.length===0 || essays.length===0} onClick={createSession} className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50">
             {loading ? 'Creating…' : 'Create Session'}
           </button>
         </div>
@@ -300,7 +352,7 @@ function Calibration() {
           </div>
         )}
       </div>
-    </>
+    </ErrorBoundary>
   );
 }
 
