@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ function Navbar() {
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -15,8 +16,13 @@ function Navbar() {
     navigate('/auth');
   };
 
+  const linkBase = 'relative px-1 py-0.5 transition-colors';
+  const desktopLink = (to: string, extra = '') => {
+    const active = location.pathname === to;
+    return `${linkBase} ${active ? 'text-brand-700 dark:text-brand-300 font-semibold after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full after:rounded after:bg-accent-500' : 'text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400'} ${extra}`;
+  };
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow mb-6 transition-colors">
+    <nav className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 mb-6 sticky top-0 z-40 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 py-3">
         {/* Mobile and Desktop Header */}
         <div className="flex items-center justify-between">
@@ -28,15 +34,15 @@ function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6">
-            <Link to="/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Dashboard</Link>
-            <Link to="/rubrics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Rubrics</Link>
-            <Link to="/students" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Students</Link>
-            <Link to="/essay-feedback" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Essay Feedback</Link>
-            <Link to="/analytics" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Analytics</Link>
-            <Link to="/batch" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Batch</Link>
-            <Link to="/calibration" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">Calibration</Link>
+            <Link to="/dashboard" className={desktopLink('/dashboard')}>Dashboard</Link>
+            <Link to="/rubrics" className={desktopLink('/rubrics')}>Rubrics</Link>
+            <Link to="/students" className={desktopLink('/students')}>Students</Link>
+            <Link to="/essay-feedback" className={desktopLink('/essay-feedback')}>Essay Feedback</Link>
+            <Link to="/analytics" className={desktopLink('/analytics')}>Analytics</Link>
+            <Link to="/batch" className={desktopLink('/batch')}>Batch</Link>
+            <Link to="/calibration" className={desktopLink('/calibration')}>Calibration</Link>
             {profile?.is_admin && (
-              <Link to="/admin" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">Admin</Link>
+              <Link to="/admin" className={desktopLink('/admin','text-orange-600 dark:text-orange-400')}>Admin</Link>
             )}
           </div>
 
