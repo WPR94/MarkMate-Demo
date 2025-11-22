@@ -25,6 +25,20 @@ function Auth() {
   // Password strength state
   const passwordStrength = isSignUp ? validatePasswordStrength(password) : null;
 
+  // Handle email confirmation and redirect
+  useEffect(() => {
+    // Check for email confirmation token in URL hash
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const type = hashParams.get('type');
+    
+    if (accessToken && type === 'signup') {
+      notify.success('Email verified! Redirecting to dashboard...');
+      // Clear the hash from URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
   // Redirect to dashboard if user is already authenticated
   useEffect(() => {
     if (user) {
