@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { AdminNav } from '../components/AdminNav';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { 
   MagnifyingGlassIcon, 
   UserCircleIcon,
@@ -27,10 +28,13 @@ export function AdminUsers() {
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, pageSize]);
 
   useEffect(() => {
     // Filter users based on search term
@@ -48,12 +52,16 @@ export function AdminUsers() {
   const fetchUsers = async () => {
     try {
       // Fetch all profiles with usage stats
-      const { data: profilesData, error: profilesError } = await supabase
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data: profilesData, error: profilesError, count } = await supabase
         .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (profilesError) throw profilesError;
+      setTotalUsers(count || 0);
 
       // Fetch usage stats for each user
       const usersWithStats = await Promise.all(
@@ -111,6 +119,15 @@ export function AdminUsers() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AdminNav />
+      <ErrorBoundary fallback={(
+        <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Something went wrong</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Please refresh the page and try again.</p>
+            <button onClick={() => window.location.reload()} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Reload</button>
+          </div>
+        </div>
+      )}>
       <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -135,7 +152,7 @@ export function AdminUsers() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalUsers}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">Admin Users</p>
@@ -157,8 +174,8 @@ export function AdminUsers() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
+        {/* Search & Paging */}
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
@@ -170,6 +187,19 @@ export function AdminUsers() {
                        bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                        focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Page size:</label>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              aria-label="Page size"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
           </div>
         </div>
 
@@ -265,13 +295,31 @@ export function AdminUsers() {
           </div>
         </div>
 
-        {/* Results Count */}
-        {searchTerm && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
-            Showing {filteredUsers.length} of {users.length} users
+        {/* Paging Controls */}
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {Math.min((page - 1) * pageSize + 1, totalUsers)}-
+            {Math.min(page * pageSize, totalUsers)} of {totalUsers} users
           </p>
-        )}
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <button
+              className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-sm disabled:opacity-50"
+              onClick={() => setPage((p) => (p * pageSize < totalUsers ? p + 1 : p))}
+              disabled={page * pageSize >= totalUsers}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
+      </ErrorBoundary>
     </div>
   );
 }
