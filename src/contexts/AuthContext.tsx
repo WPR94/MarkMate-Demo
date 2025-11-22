@@ -27,6 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+      return new Promise<T>((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('timeout')), ms);
+        promise
+          .then((v) => { clearTimeout(t); resolve(v); })
+          .catch((e) => { clearTimeout(t); reject(e); });
+      });
+    };
     // Guard: global timeout fallback to avoid perpetual loading states
     const loadingWatchdog = setTimeout(() => {
       if (mounted) {
@@ -45,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return adminEmailSet.has(email.toLowerCase());
     };
 
-    // withTimeout no longer used for auth.getSession; rely on watchdog
+    // Note: Use a bounded getSession to avoid long initial stalls
 
     const fetchOrCreateProfile = async (currentUser: import('@supabase/supabase-js').User) => {
       try {
@@ -145,8 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
-        // Avoid aggressive timeouts here; rely on watchdog as a fallback
-        const { data } = await supabase.auth.getSession();
+        // Bound the initial getSession to 5s; onAuthStateChange will reconcile later if slow
+        const { data } = await withTimeout(supabase.auth.getSession(), 5000);
         if (!mounted) return;
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
@@ -161,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
         }
       } catch (e) {
-        console.warn('[AuthContext] getSession failed; proceeding without session', e);
+        console.warn('[AuthContext] getSession timed out/failed; proceeding without blocking UI', e);
         if (mounted) {
           setUser(null);
           setProfile(null);
@@ -185,6 +193,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(null);
         setProfileHydrated(false);
       }
+      // Ensure UI never stays blocked waiting on auth events
+      setLoading(false);
     });
 
     return () => {
