@@ -7,6 +7,8 @@ import { generateEssayFeedback, generateEssayScore, generateBandAnalysis } from 
 import { generateFeedbackViaEdgeFunction, generateScoreViaEdgeFunction } from '../utils/openaiEdgeFunction';
 import { AiFeedback } from '../utils/edgeFunctions';
 import Navbar from '../components/Navbar';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { FormSkeleton } from '../components/LoadingSkeleton';
 import jsPDF from 'jspdf';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
@@ -86,6 +88,7 @@ function EssayFeedback() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [showCommentBank, setShowCommentBank] = useState(false);
   const [showAoLegend, setShowAoLegend] = useState(false);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +97,7 @@ function EssayFeedback() {
     if (!user) return;
     
     const loadData = async () => {
+      setInitialLoading(true);
       // Load rubrics
       const { data: rubricsData, error: rubricsError } = await supabase
         .from('rubrics')
@@ -120,6 +124,7 @@ function EssayFeedback() {
       } else if (studentsData) {
         setStudents(studentsData);
       }
+      setInitialLoading(false);
     };
     
     loadData();
@@ -617,9 +622,16 @@ function EssayFeedback() {
   return (
     <>
       <Navbar />
+      <ErrorBoundary>
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-gray-900">Essay Feedback Generator</h2>
-        
+        {initialLoading ? (
+          <div className="space-y-4">
+            <FormSkeleton />
+            <FormSkeleton />
+          </div>
+        ) : (
+        <>
         {/* Essay Title */}
         <div className="mb-6">
           <label htmlFor="essay-title" className="block font-semibold text-gray-700 mb-2">
@@ -1077,7 +1089,10 @@ function EssayFeedback() {
             { keys: 'Shift+?', description: 'Toggle this help' },
           ]}
         />
+        </>
+        )}
       </div>
+      </ErrorBoundary>
     </>
   );
 }

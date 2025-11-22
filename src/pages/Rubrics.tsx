@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import notify from '../utils/notify';
 import { parseRubricFile, parseRubricText, criteriaToCriteriaState } from '../utils/rubricParser';
 import Navbar from '../components/Navbar';
+import ErrorBoundary from '../components/ErrorBoundary';
+import { FormSkeleton } from '../components/LoadingSkeleton';
 import ConfirmModal from '../components/ConfirmModal';
 
 interface Criterion {
@@ -30,6 +32,7 @@ interface RubricRow {
 function Rubrics() {
   const { user } = useAuth();
   const [rubrics, setRubrics] = useState<RubricRow[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [subject, setSubject] = useState('English');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -53,6 +56,7 @@ function Rubrics() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
+      setLoading(true);
       const { data, error } = await supabase
         .from('rubrics')
         .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
@@ -64,6 +68,7 @@ function Rubrics() {
       } else {
         setRubrics(data as RubricRow[]);
       }
+      setLoading(false);
     };
     load();
   }, [user]);
@@ -333,8 +338,15 @@ function Rubrics() {
   return (
     <>
       <Navbar />
+      <ErrorBoundary>
       <div className="p-4 sm:p-6 max-w-5xl mx-auto">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Rubrics Manager</h2>
+        {loading ? (
+          <div className="space-y-4">
+            <FormSkeleton />
+            <FormSkeleton />
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="border p-4 sm:p-6 bg-gray-50 rounded mb-6 space-y-4">
           {/* Exam Board & Template Selection */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -496,6 +508,7 @@ function Rubrics() {
           </div>
           <button type="submit" className="bg-green-600 text-white py-2 px-4 rounded">Save Rubric</button>
         </form>
+        )}
         <h3 className="text-xl font-bold mb-4">Your Rubrics</h3>
         {/* Controls */}
         <div className="flex flex-wrap gap-4 mb-4 items-center">
@@ -521,8 +534,15 @@ function Rubrics() {
           </button>
           <span className="text-xs text-gray-600">Showing {filteredRubrics.length} rubric(s)</span>
         </div>
-        {/* Grouped or flat display */}
-        {groupView ? (
+        {/* Empty state */}
+        {!loading && rubrics.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="text-5xl mb-3">📋</div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-1">No rubrics yet</h4>
+            <p className="text-gray-600 mb-4">Create your first rubric using the form above or import from a template.</p>
+            <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-blue-600 hover:underline">Jump to form</a>
+          </div>
+        ) : groupView ? (
           <div className="space-y-6">
             {groupedRubrics.map(group => (
               <div key={group.base} className="border rounded bg-gray-50">
@@ -623,6 +643,7 @@ function Rubrics() {
           </div>
         )}
       </div>
+      </ErrorBoundary>
       {lineageModalOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="lineage-title" className="fixed inset-0 bg-black/40 flex items-start sm:items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">

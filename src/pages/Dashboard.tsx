@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import notify from '../utils/notify';
 import Navbar from '../components/Navbar';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardSkeleton } from '../components/LoadingSkeleton';
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
@@ -171,6 +172,7 @@ function Dashboard() {
   return (
     <>
       <Navbar />
+      <ErrorBoundary>
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 sm:mb-8">
@@ -398,6 +400,7 @@ function Dashboard() {
           )}
         </div>
       </div>
+      </ErrorBoundary>
 
       <KeyboardShortcutsHelp
         isOpen={showShortcuts}

@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import Navbar from '../components/Navbar';
+import ErrorBoundary from '../components/ErrorBoundary';
 import ConfirmModal from '../components/ConfirmModal';
 
 interface Student {
@@ -296,6 +297,7 @@ function Students() {
   return (
     <>
       <Navbar />
+      <ErrorBoundary>
       {loading ? (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
@@ -533,6 +535,7 @@ function Students() {
         </div>
       </div>
       )}
+      </ErrorBoundary>
 
       <ConfirmModal
         isOpen={deleteModalOpen}

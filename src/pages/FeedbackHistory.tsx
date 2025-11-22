@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
 import Navbar from '../components/Navbar';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { ListItemSkeleton } from '../components/LoadingSkeleton';
 import ConfirmModal from '../components/ConfirmModal';
 import { sendFeedbackEmail } from '../utils/emailTemplate';
@@ -263,6 +264,7 @@ function FeedbackHistory() {
   return (
     <>
       <Navbar />
+      <ErrorBoundary>
       <ConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {
@@ -610,6 +612,7 @@ function FeedbackHistory() {
           )}
         </div>
       </div>
+        </ErrorBoundary>
     </>
   );
 }
