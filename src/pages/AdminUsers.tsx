@@ -63,23 +63,34 @@ export function AdminUsers() {
       if (profilesError) throw profilesError;
       setTotalUsers(count || 0);
 
-      // Fetch usage stats for each user
-      const usersWithStats = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          const [essays, rubrics, students] = await Promise.all([
-            supabase.from('essays').select('id', { count: 'exact', head: true }).eq('teacher_id', profile.id),
-            supabase.from('rubrics').select('id', { count: 'exact', head: true }).eq('teacher_id', profile.id),
-            supabase.from('students').select('id', { count: 'exact', head: true }).eq('teacher_id', profile.id),
-          ]);
+      // Aggregated counts per teacher to avoid N+1 queries
+      const ids = (profilesData || []).map((p: any) => p.id);
 
-          return {
-            ...profile,
-            essay_count: essays.count || 0,
-            rubric_count: rubrics.count || 0,
-            student_count: students.count || 0,
-          };
-        })
-      );
+      const [{ data: essayCounts }, { data: rubricCounts }, { data: studentCounts }] = await Promise.all([
+        supabase
+          .from('essays')
+          .select('teacher_id, count:id')
+          .in('teacher_id', ids),
+        supabase
+          .from('rubrics')
+          .select('teacher_id, count:id')
+          .in('teacher_id', ids),
+        supabase
+          .from('students')
+          .select('teacher_id, count:id')
+          .in('teacher_id', ids),
+      ]);
+
+      const essayMap = new Map<string, number>((essayCounts as any[] | null)?.map((r: any) => [r.teacher_id, Number(r.count)]) || []);
+      const rubricMap = new Map<string, number>((rubricCounts as any[] | null)?.map((r: any) => [r.teacher_id, Number(r.count)]) || []);
+      const studentMap = new Map<string, number>((studentCounts as any[] | null)?.map((r: any) => [r.teacher_id, Number(r.count)]) || []);
+
+      const usersWithStats = (profilesData || []).map((profile: any) => ({
+        ...profile,
+        essay_count: essayMap.get(profile.id) || 0,
+        rubric_count: rubricMap.get(profile.id) || 0,
+        student_count: studentMap.get(profile.id) || 0,
+      }));
 
       setUsers(usersWithStats);
       setFilteredUsers(usersWithStats);
