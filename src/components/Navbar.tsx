@@ -28,8 +28,7 @@ function Navbar() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/dashboard" className="hover:opacity-90" aria-label="Simple RubriQ Home">
-            <span className="sr-only">Simple RubriQ</span>
-            <Logo className="h-8 sm:h-10 transition-transform hover:scale-105" />
+            <Logo className="h-8 sm:h-10 transition-transform hover:scale-105" hideWordmark />
           </Link>
 
           {/* Desktop Navigation */}
