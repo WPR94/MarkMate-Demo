@@ -306,55 +306,60 @@ function Dashboard() {
               </div>
 
               {/* Charts Section */}
-              {chartsLoading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  <ChartSkeleton />
-                  <ChartSkeleton />
-                </div>
-              ) : feedbackData.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  {/* Feedback Trend Chart */}
-                  <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Feedback Trend (Last 30)</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Feedback Trend Chart */}
+                <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Feedback Trend (Last 30)</h3>
+                  {chartsLoading ? (
+                    <ChartSkeleton />
+                  ) : feedbackData.length > 0 ? (
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <LineChart data={trendChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="created_at" 
-                          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          fontSize={12}
-                        />
-                        <YAxis domain={[0, 100]} fontSize={12} />
-                        <Tooltip 
-                          labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          formatter={(value: any) => [`${value}/100`, 'Score']}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="overall_score" stroke="#3B82F6" strokeWidth={2} name="Score" dot={{ r: 4 }} />
-                      </LineChart>
+                        <LineChart data={trendChartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="created_at"
+                            tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            fontSize={12}
+                          />
+                          <YAxis domain={[0, 100]} fontSize={12} />
+                          <Tooltip
+                            labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            formatter={(value: any) => [`${value}/100`, 'Score']}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="overall_score" stroke="#3B82F6" strokeWidth={2} name="Score" dot={{ r: 4 }} />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-10">No feedback data yet</div>
+                  )}
+                </div>
 
-                  {/* Score Distribution Chart */}
-                  <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
+                {/* Score Distribution Chart */}
+                <div className="bg-white rounded-lg shadow p-4 sm:p-6 overflow-hidden">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
+                  {chartsLoading ? (
+                    <ChartSkeleton />
+                  ) : feedbackData.length > 0 ? (
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
-                      <BarChart data={scoreDistributionData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="range" fontSize={12} />
-                        <YAxis fontSize={12} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="count" fill="#10B981" name="Essays" />
-                      </BarChart>
+                        <BarChart data={scoreDistributionData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="range" fontSize={12} />
+                          <YAxis fontSize={12} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="count" fill="#10B981" name="Essays" />
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-10">No distribution data yet</div>
+                  )}
                 </div>
-              ) : null}
+              </div>
 
               {/* Recent Activity */}
               <div className="bg-white rounded-lg shadow mb-8">
