@@ -7,6 +7,7 @@ import Students from './pages/Students';
 import Rubrics from './pages/Rubrics';
 import Analytics from './pages/Analytics';
 import BatchProcessor from './pages/BatchProcessor';
+import Calibration from './pages/Calibration';
 import FeedbackHistory from './pages/FeedbackHistory';
 import Demo from './pages/Demo';
 import DashboardDemo from './pages/DashboardDemo';
@@ -58,6 +59,7 @@ function App() {
           <Route path="/rubrics" element={<Rubrics />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/batch" element={<BatchProcessor />} />
+          <Route path="/calibration" element={<Calibration />} />
         </Route>
         {/* Public */}
         <Route path="/demo" element={<Demo />} />
