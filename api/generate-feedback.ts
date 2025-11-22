@@ -95,7 +95,9 @@ Be specific. Quote their work. Sound like a real teacher, not a robot.`,
     if (!content) {
       throw new Error('No feedback generated');
     }
-
+    // Add diagnostics header (non-sensitive)
+    const key = process.env.OPENAI_API_KEY || '';
+    res.setHeader('X-Diagnostics', `openaiKeyPresent=${!!key};keyStart=${key.slice(0,8)}`);
     return res.status(200).json({ feedback: content });
   } catch (error: any) {
     console.error('OpenAI API Error:', error);
@@ -107,8 +109,10 @@ Be specific. Quote their work. Sound like a real teacher, not a robot.`,
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
     
-    return res.status(500).json({ 
-      error: error?.message || 'Failed to generate feedback' 
+    const key = process.env.OPENAI_API_KEY || '';
+    res.setHeader('X-Diagnostics', `openaiKeyPresent=${!!key};keyStart=${key.slice(0,8)}`);
+    return res.status(500).json({
+      error: error?.message || 'Failed to generate feedback'
     });
   }
 }
