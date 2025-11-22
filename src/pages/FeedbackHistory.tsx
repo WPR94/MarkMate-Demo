@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
@@ -448,12 +449,12 @@ function FeedbackHistory() {
                   Clear All Filters
                 </button>
               ) : (
-                <a
-                  href="/essay-feedback"
+                <Link
+                  to="/essay-feedback"
                   className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Grade an Essay
-                </a>
+                </Link>
               )}
             </div>
           ) : (

@@ -671,7 +671,7 @@ function EssayFeedback() {
           </select>
           {rubrics.length === 0 && (
             <p className="text-sm text-gray-500 mt-2">
-              No rubrics found. <a href="/rubrics" className="text-blue-600 hover:underline">Create one</a> first.
+              No rubrics found. <Link to="/rubrics" className="text-blue-600 hover:underline">Create one</Link> first.
             </p>
           )}
         </div>
@@ -696,7 +696,7 @@ function EssayFeedback() {
           </select>
           {students.length === 0 && (
             <p className="text-sm text-gray-500 mt-2">
-              No students found. <a href="/students" className="text-blue-600 hover:underline">Add students</a> to link essays.
+              No students found. <Link to="/students" className="text-blue-600 hover:underline">Add students</Link> to link essays.
             </p>
           )}
         </div>

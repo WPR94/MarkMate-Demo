@@ -30,6 +30,7 @@ import { useSessionTimeout } from './hooks/useSessionTimeout';
 import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { testSupabaseConnection } from './lib/supabaseClient';
+import AvailabilityBanner from './components/AvailabilityBanner';
 
 function App() {
   // Session timeout for security (auto-logout after inactivity)
@@ -45,6 +46,7 @@ function App() {
   return (
     <div className="overflow-x-hidden">
       <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+      <AvailabilityBanner />
       <CookieConsent />
       {/* Show feedback button only for authenticated users */}
       {user && <FeedbackButton />}
