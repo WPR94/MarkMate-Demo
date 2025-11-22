@@ -22,6 +22,7 @@ function Calibration() {
   const [currentEssayId, setCurrentEssayId] = useState<string>('');
   const [scores, setScores] = useState({ ao1: 0, ao2: 0, ao3: 0, ao4: 0 });
   const [loading, setLoading] = useState(false);
+  const [showExplainer, setShowExplainer] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -36,6 +37,11 @@ function Calibration() {
       setSessions((sessionData || []) as CalibrationSession[]);
     })();
   }, [user]);
+
+  useEffect(() => {
+    const dismissed = typeof window !== 'undefined' && localStorage.getItem('calibrationExplainerDismissed') === '1';
+    if (dismissed) setShowExplainer(false);
+  }, []);
 
   // (Future) sessionEssays reserved for expanded UI; suppress unused warning for now
 
@@ -114,6 +120,32 @@ function Calibration() {
       <Navbar />
       <div className="p-4 max-w-6xl mx-auto">
         <h2 className="text-2xl font-bold mb-6">Calibration / Moderation</h2>
+        {showExplainer && (
+          <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="font-semibold mb-1">What is Calibration?</div>
+                <p className="mb-2">Calibration helps your team align on how a rubric is applied so students receive consistent, fair marks.</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Select a rubric and a short set of representative scripts.</li>
+                  <li>Each marker scores the same scripts independently.</li>
+                  <li>Review the agreement stats to spot drift and discuss outliers.</li>
+                </ul>
+                <p className="mt-2 text-blue-800">Tip: Use anonymised scripts and keep sets small (5–10) for focused discussion.</p>
+              </div>
+              <button
+                aria-label="Dismiss explainer"
+                className="shrink-0 rounded px-2 py-1 text-blue-900 hover:bg-blue-100"
+                onClick={() => {
+                  try { localStorage.setItem('calibrationExplainerDismissed', '1'); } catch {}
+                  setShowExplainer(false);
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         {/* Create Session */}
         <div className="bg-gray-50 border rounded p-4 mb-6">
           <h3 className="font-semibold mb-2">Create Calibration Session</h3>
