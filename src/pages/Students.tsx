@@ -48,7 +48,7 @@ function Students() {
       setLoading(true);
       // Timeout protection for maintenance/downtime
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timed out - Supabase may be under maintenance')), 15000)
+        setTimeout(() => reject(new Error('Request timed out - Supabase may be under maintenance')), 20000)
       );
       const fetchPromise = supabase
         .from('students')
