@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -92,43 +92,52 @@ function EssayFeedback() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
-  // Load teacher's rubrics and students on mount
+  // Load teacher's rubrics and students (mount + on tab visibility)
+  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!user) return;
+    const silent = opts?.silent;
+    if (!silent) setInitialLoading(true);
+    // Load rubrics
+    const { data: rubricsData, error: rubricsError } = await supabase
+      .from('rubrics')
+      .select('id, name, subject, exam_board')
+      .eq('teacher_id', user.id)
+      .order('created_at', { ascending: false });
+    if (rubricsError) {
+      console.error('Failed to load rubrics:', rubricsError);
+    } else if (rubricsData) {
+      setRubrics(rubricsData);
+    }
+    // Load students
+    const { data: studentsData, error: studentsError } = await supabase
+      .from('students')
+      .select('id, name')
+      .eq('teacher_id', user.id)
+      .eq('active', true)
+      .order('name');
+    if (studentsError) {
+      console.error('Failed to load students:', studentsError);
+    } else if (studentsData) {
+      setStudents(studentsData);
+    }
+    if (!silent) setInitialLoading(false);
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
-    
-    const loadData = async () => {
-      setInitialLoading(true);
-      // Load rubrics
-      const { data: rubricsData, error: rubricsError } = await supabase
-        .from('rubrics')
-        .select('id, name, subject, exam_board')
-        .eq('teacher_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (rubricsError) {
-        console.error('Failed to load rubrics:', rubricsError);
-      } else if (rubricsData) {
-        setRubrics(rubricsData);
-      }
-      
-      // Load students
-      const { data: studentsData, error: studentsError } = await supabase
-        .from('students')
-        .select('id, name')
-        .eq('teacher_id', user.id)
-        .eq('active', true)
-        .order('name');
-      
-      if (studentsError) {
-        console.error('Failed to load students:', studentsError);
-      } else if (studentsData) {
-        setStudents(studentsData);
-      }
-      setInitialLoading(false);
-    };
-    
     loadData();
-  }, [user]);
+  }, [user, loadData]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Refresh lists silently after tab resumes to avoid stale/blank states
+        loadData({ silent: true });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user, loadData]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
