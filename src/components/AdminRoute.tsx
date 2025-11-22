@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 
@@ -113,12 +113,12 @@ export function AdminRoute({ children }: AdminRouteProps) {
         <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md">
           Your account is not marked as admin. Update <code>is_admin</code> to TRUE for your user in the <code>profiles</code> table.
         </p>
-        <a
-          href="/dashboard"
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
-        >
-          Back to Dashboard
-        </a>
+          <Link
+            to="/dashboard"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+          >
+            Back to Dashboard
+          </Link>
         <button
           onClick={() => signOut()}
           className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"

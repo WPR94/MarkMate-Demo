@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import notify from '../utils/notify';
@@ -887,20 +888,20 @@ function EssayFeedback() {
                   <span>✨</span>
                   <span>Grade Another Essay</span>
                 </button>
-                <a
-                  href="/feedback-history"
+                <Link
+                  to="/feedback-history"
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center gap-2"
                 >
                   <span>📋</span>
                   <span>View All Feedback</span>
-                </a>
-                <a
-                  href="/dashboard"
+                </Link>
+                <Link
+                  to="/dashboard"
                   className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold flex items-center gap-2"
                 >
                   <span>🏠</span>
                   <span>Go to Dashboard</span>
-                </a>
+                </Link>
               </div>
             </div>
             
@@ -908,12 +909,12 @@ function EssayFeedback() {
               <h3 className="text-2xl font-bold text-gray-900">AI Feedback Results</h3>
               <div className="flex gap-3">
                 {savedEssayId && (
-                  <a
-                    href="/feedback-history"
+                  <Link
+                    to="/feedback-history"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
                     📋 View in History
-                  </a>
+                  </Link>
                 )}
                 <button
                   type="button"
