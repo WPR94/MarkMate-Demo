@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('[AuthContext] Watchdog: forcing loading=false after timeout');
         setLoading(false);
       }
-    }, 15000);
+    }, 20000);
 
     const adminEmailsRaw = (import.meta.env.VITE_ADMIN_EMAILS || '').trim();
     const adminEmailSet = new Set(
@@ -153,11 +153,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
-        // Bound the initial getSession to 5s; onAuthStateChange will reconcile later if slow
-        const { data } = await withTimeout(supabase.auth.getSession(), 5000);
+        // Bound the initial getSession to 10s (generous for slower networks); onAuthStateChange will reconcile later
+        const { data } = await withTimeout(supabase.auth.getSession(), 10000);
         if (!mounted) return;
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
+        // Exit loading early, hydrate profile in background
+        if (mounted) setLoading(false);
         if (currentUser) {
           // Dedupe guard: ensure we only hydrate profile once during init
           if (!profileHydrated) {
@@ -173,9 +175,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setUser(null);
           setProfile(null);
+          setLoading(false);
         }
-      } finally {
-        if (mounted) setLoading(false);
       }
     };
     init();
