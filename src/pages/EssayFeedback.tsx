@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabaseClient'; // for saving essays/feedback
 import notify from '../utils/notify';
 import { parseEssayFile, validateEssay } from '../utils/essayParser';
 import { generateEssayFeedback, generateEssayScore, generateBandAnalysis } from '../utils/openaiClient';
@@ -13,6 +13,7 @@ import { FormSkeleton } from '../components/LoadingSkeleton';
 // Heavy export libs will be lazy-loaded when needed
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
 import CommentBank from '../components/CommentBank';
+import { useTeacherRubrics, useTeacherStudents } from '../hooks/useTeacherData';
 
 // Helper to create a simple text highlight based on keyword matching
 function highlightEssayText(text: string, feedback: AiFeedback | null): React.ReactNode[] {
@@ -77,8 +78,8 @@ function EssayFeedback() {
   const [content, setContent] = useState('');
   const [rubricId, setRubricId] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
-  const [rubrics, setRubrics] = useState<Array<{ id: string; name: string; subject: string; exam_board?: string }>>([]);
-  const [students, setStudents] = useState<Array<{ id: string; name: string }>>([]);
+  const { data: rubrics = [], isLoading: rubricsLoading } = useTeacherRubrics();
+  const { data: students = [], isLoading: studentsLoading } = useTeacherStudents();
   const [bandAnalysis, setBandAnalysis] = useState<any>(null);
   const [feedback, setFeedback] = useState<AiFeedback | null>(null);
   const [savedEssayId, setSavedEssayId] = useState<string | null>(null);
@@ -88,56 +89,10 @@ function EssayFeedback() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [showCommentBank, setShowCommentBank] = useState(false);
   const [showAoLegend, setShowAoLegend] = useState(false);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const initialLoading = rubricsLoading || studentsLoading;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
-  // Load teacher's rubrics and students (mount + on tab visibility)
-  const loadData = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!user) return;
-    const silent = opts?.silent;
-    if (!silent) setInitialLoading(true);
-    // Load rubrics
-    const { data: rubricsData, error: rubricsError } = await supabase
-      .from('rubrics')
-      .select('id, name, subject, exam_board')
-      .eq('teacher_id', user.id)
-      .order('created_at', { ascending: false });
-    if (rubricsError) {
-      console.error('Failed to load rubrics:', rubricsError);
-    } else if (rubricsData) {
-      setRubrics(rubricsData);
-    }
-    // Load students
-    const { data: studentsData, error: studentsError } = await supabase
-      .from('students')
-      .select('id, name')
-      .eq('teacher_id', user.id)
-      .eq('active', true)
-      .order('name');
-    if (studentsError) {
-      console.error('Failed to load students:', studentsError);
-    } else if (studentsData) {
-      setStudents(studentsData);
-    }
-    if (!silent) setInitialLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    loadData();
-  }, [user, loadData]);
-
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && user) {
-        // Refresh lists silently after tab resumes to avoid stale/blank states
-        loadData({ silent: true });
-      }
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [user, loadData]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
