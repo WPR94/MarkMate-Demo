@@ -1,44 +1,28 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import notify from '../utils/notify';
 import Navbar from '../components/Navbar';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { DashboardSkeleton, ChartSkeleton } from '../components/LoadingSkeleton';
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '../hooks/useKeyboardShortcuts';
 import { OnboardingTour, useOnboardingTour } from '../components/OnboardingTour';
-
-type DashboardStats = {
-  essaysCount: number;
-  rubricsCount: number;
-  feedbackCount: number;
-};
-
-type RecentFeedback = {
-  id: number;
-  created_at: string;
-  essay_title: string;
-};
-
-type FeedbackData = {
-  created_at: string;
-  overall_score: number;
-};
+import { useDashboardStats, useFeedbackData } from '../hooks/useDashboard';
 
 function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentFeedback, setRecentFeedback] = useState<RecentFeedback[]>([]);
-  const [feedbackData, setFeedbackData] = useState<FeedbackData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [chartsLoading, setChartsLoading] = useState(true);
-  const cacheKey = user ? `dashboard:snapshot:${user.id}` : undefined;
-  const FRESHNESS_MS = 60_000; // 1 minute freshness window
-  const hasInitializedRef = useRef(false);
+  const queryClient = useQueryClient();
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // React Query hooks for data fetching
+  const { data: statsData, isLoading: statsLoading, isError: statsError } = useDashboardStats();
+  const { data: feedbackData, isLoading: chartsLoading } = useFeedbackData();
+
+  const stats = statsData?.stats ?? null;
+  const recentFeedback = statsData?.recentFeedback ?? [];
 
   // Onboarding tour
   const { showTour, completeTour, skipTour } = useOnboardingTour('simple-rubriq-dashboard-tour');
@@ -77,14 +61,17 @@ function Dashboard() {
   ];
 
   // Memoized chart datasets
-  const trendChartData = useMemo(() => feedbackData.slice(0, 10).reverse(), [feedbackData]);
-  const scoreDistributionData = useMemo(() => ([
-    { range: '0-20', count: feedbackData.filter(f => f.overall_score >= 0 && f.overall_score < 20).length },
-    { range: '20-40', count: feedbackData.filter(f => f.overall_score >= 20 && f.overall_score < 40).length },
-    { range: '40-60', count: feedbackData.filter(f => f.overall_score >= 40 && f.overall_score < 60).length },
-    { range: '60-80', count: feedbackData.filter(f => f.overall_score >= 60 && f.overall_score < 80).length },
-    { range: '80-100', count: feedbackData.filter(f => f.overall_score >= 80 && f.overall_score <= 100).length },
-  ]), [feedbackData]);
+  const trendChartData = useMemo(() => (feedbackData || []).slice(0, 10).reverse(), [feedbackData]);
+  const scoreDistributionData = useMemo(() => {
+    const data = feedbackData || [];
+    return [
+      { range: '0-20', count: data.filter(f => f.overall_score >= 0 && f.overall_score < 20).length },
+      { range: '20-40', count: data.filter(f => f.overall_score >= 20 && f.overall_score < 40).length },
+      { range: '40-60', count: data.filter(f => f.overall_score >= 40 && f.overall_score < 60).length },
+      { range: '60-80', count: data.filter(f => f.overall_score >= 60 && f.overall_score < 80).length },
+      { range: '80-100', count: data.filter(f => f.overall_score >= 80 && f.overall_score <= 100).length },
+    ];
+  }, [feedbackData]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -113,162 +100,19 @@ function Dashboard() {
     },
   ]);
 
-  const fetchDashboardData = useCallback(async (opts?: { force?: boolean }) => {
-    if (!user) return;
-    const force = opts?.force;
-    try {
-      // Cache may provide immediate paint; still revalidate in background
-      if (cacheKey && !force) {
-        const raw = localStorage.getItem(cacheKey);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            const ts: number | undefined = parsed.ts;
-            const fresh = ts && Date.now() - ts < FRESHNESS_MS;
-            if (fresh && parsed.stats) {
-              setStats(parsed.stats);
-              if (parsed.recentFeedback) setRecentFeedback(parsed.recentFeedback);
-              setLoading(false);
-            }
-          } catch {}
-        }
-      }
-
-      let useRPC = true;
-      try {
-        const { data, error } = await supabase.rpc('get_teacher_dashboard', { p_teacher_id: user.id });
-        if (error) throw error;
-        if (data && Array.isArray(data) && data.length > 0) {
-          const row: any = data[0];
-          const newStats = {
-            essaysCount: Number(row.essays_count) || 0,
-            rubricsCount: Number(row.rubrics_count) || 0,
-            feedbackCount: Number(row.feedback_count) || 0,
-          };
-          const recentArray: any[] = Array.isArray(row.recent) ? row.recent : [];
-          const recent: RecentFeedback[] = recentArray.map((r: any) => ({
-            id: r.id,
-            created_at: r.created_at,
-            essay_title: r.essay_title || 'Untitled Essay',
-          }));
-          setStats(newStats);
-          setRecentFeedback(recent);
-          if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ stats: newStats, recentFeedback: recent, ts: Date.now() }));
-          setLoading(false);
-        }
-      } catch (e) {
-        useRPC = false;
-      }
-
-      if (!useRPC) {
-        const [essaysResult, rubricsResult, feedbackResult, recentResult] = await Promise.all([
-          supabase.from('essays').select('id', { count: 'exact', head: true }).eq('teacher_id', user.id),
-          supabase.from('rubrics').select('id', { count: 'exact', head: true }).eq('teacher_id', user.id),
-          supabase.from('feedback').select('id, essays!inner(id,teacher_id)', { count: 'exact', head: true }).eq('essays.teacher_id', user.id),
-          supabase.from('feedback').select('id, created_at, essays!inner(title,teacher_id)').eq('essays.teacher_id', user.id).order('created_at', { ascending: false }).limit(5),
-        ]);
-        if (essaysResult.error) throw essaysResult.error;
-        if (rubricsResult.error) throw rubricsResult.error;
-        if (feedbackResult.error) throw feedbackResult.error;
-        if (recentResult.error) throw recentResult.error;
-        const newStats = {
-          essaysCount: essaysResult.count ?? 0,
-          rubricsCount: rubricsResult.count ?? 0,
-          feedbackCount: feedbackResult.count ?? 0,
-        };
-        setStats(newStats);
-        const recent = (recentResult.data ?? []).map((item: any) => ({
-          id: item.id,
-          created_at: item.created_at,
-          essay_title: item.essays?.title || 'Untitled Essay',
-        }));
-        setRecentFeedback(recent);
-        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ stats: newStats, recentFeedback: recent, ts: Date.now() }));
-        setLoading(false);
-      }
-
-      // Defer charts fetch until idle
-      const schedule = (cb: () => void) => {
-        // @ts-ignore
-        if (typeof window !== 'undefined' && window.requestIdleCallback) {
-          // @ts-ignore
-          window.requestIdleCallback(cb, { timeout: 1000 });
-        } else {
-          setTimeout(cb, 0);
-        }
-      };
-      schedule(async () => {
-        try {
-          setChartsLoading(true);
-          const { data, error } = await supabase
-            .from('feedback')
-            .select('created_at, overall_score, essays!inner(teacher_id)')
-            .eq('essays.teacher_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(30);
-          if (error) throw error;
-          setFeedbackData(data || []);
-        } catch (e) {
-          console.error('Failed to load chart data:', e);
-        } finally {
-          setChartsLoading(false);
-        }
-      });
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      notify.error('Failed to load dashboard data');
-      setStats({ essaysCount: 0, rubricsCount: 0, feedbackCount: 0 });
-      setRecentFeedback([]);
-      setLoading(false);
-    }
-  }, [user, cacheKey]);
-
+  // Realtime subscription to invalidate queries on feedback inserts
   useEffect(() => {
     if (!user) return;
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      fetchDashboardData();
-    }
     const channel = supabase
       .channel('dashboard-feedback-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, () => {
-        if (cacheKey) localStorage.removeItem(cacheKey);
-        fetchDashboardData({ force: true });
+        // Invalidate both queries to trigger refetch
+        queryClient.invalidateQueries(['dashboard', 'stats', user.id]);
+        queryClient.invalidateQueries(['dashboard', 'feedback', user.id]);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user, fetchDashboardData, cacheKey]);
-
-  useEffect(() => {
-    const handler = () => {
-      if (document.visibilityState === 'visible' && user) {
-        let shouldRefetch = stats == null;
-        if (!shouldRefetch && cacheKey) {
-          try {
-            const raw = localStorage.getItem(cacheKey);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              const ts: number | undefined = parsed.ts;
-              if (!ts || Date.now() - ts > FRESHNESS_MS) shouldRefetch = true;
-            } else {
-              shouldRefetch = true;
-            }
-          } catch { shouldRefetch = true; }
-        }
-        if (shouldRefetch) {
-          setLoading(true);
-          fetchDashboardData({ force: true });
-        }
-      }
-    };
-    document.addEventListener('visibilitychange', handler);
-    return () => document.removeEventListener('visibilitychange', handler);
-  }, [stats, user, cacheKey, fetchDashboardData]);
-
-  const manualRefresh = () => {
-    setLoading(true);
-    fetchDashboardData({ force: true });
-  };
+  }, [user, queryClient]);
 
   return (
     <>
@@ -281,12 +125,17 @@ function Dashboard() {
             {user?.email && <p className="text-sm sm:text-base text-gray-600">Logged in as {user.email}</p>}
           </div>
 
-          {loading ? (
+          {statsLoading ? (
             <DashboardSkeleton />
-          ) : stats == null ? (
+          ) : statsError ? (
             <div className="bg-white rounded-lg shadow p-8 text-center">
-              <p className="text-gray-600 mb-4">Preparing your dashboard data...</p>
-              <button onClick={manualRefresh} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Retry Fetch</button>
+              <p className="text-red-600 mb-4">Failed to load dashboard data</p>
+              <button 
+                onClick={() => queryClient.invalidateQueries(['dashboard', 'stats', user?.id])} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
             </div>
           ) : (
             <>
@@ -342,7 +191,7 @@ function Dashboard() {
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Feedback Trend (Last 30)</h3>
                   {chartsLoading ? (
                     <ChartSkeleton />
-                  ) : feedbackData.length > 0 ? (
+                  ) : (feedbackData && feedbackData.length > 0) ? (
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
                         <LineChart data={trendChartData}>
@@ -372,7 +221,7 @@ function Dashboard() {
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Score Distribution</h3>
                   {chartsLoading ? (
                     <ChartSkeleton />
-                  ) : feedbackData.length > 0 ? (
+                  ) : (feedbackData && feedbackData.length > 0) ? (
                     <div className="w-full overflow-x-auto">
                       <ResponsiveContainer width="100%" height={250} minWidth={300}>
                         <BarChart data={scoreDistributionData}>
