@@ -142,7 +142,10 @@ function Dashboard() {
         try {
           // Prefer single RPC to reduce roundtrips
           const { data, error } = await supabase.rpc('get_teacher_dashboard', { p_teacher_id: user.id });
-          if (error) throw error;
+          if (error) {
+            console.log('[Dashboard] RPC not available, using fallback queries');
+            throw error;
+          }
           if (data && Array.isArray(data) && data.length > 0) {
             const row: any = data[0];
             const newStats = {
