@@ -136,14 +136,19 @@ function Dashboard() {
           // Prefer single RPC to reduce roundtrips
           const { data, error } = await supabase.rpc('get_teacher_dashboard', { p_teacher_id: user.id });
           if (error) throw error;
-          if (data) {
-            const [essaysCount, rubricsCount, feedbackCount, recentJson] = data as any;
-            const recent: RecentFeedback[] = (recentJson as any[] | null)?.map((row: any) => ({
-              id: row.id,
-              created_at: row.created_at,
-              essay_title: row.essay_title || 'Untitled Essay',
-            })) || [];
-            const newStats = { essaysCount: Number(essaysCount) || 0, rubricsCount: Number(rubricsCount) || 0, feedbackCount: Number(feedbackCount) || 0 };
+          if (data && Array.isArray(data) && data.length > 0) {
+            const row: any = data[0];
+            const newStats = {
+              essaysCount: Number(row.essays_count) || 0,
+              rubricsCount: Number(row.rubrics_count) || 0,
+              feedbackCount: Number(row.feedback_count) || 0,
+            };
+            const recentArray: any[] = Array.isArray(row.recent) ? row.recent : [];
+            const recent: RecentFeedback[] = recentArray.map((r: any) => ({
+              id: r.id,
+              created_at: r.created_at,
+              essay_title: r.essay_title || 'Untitled Essay',
+            }));
             setStats(newStats);
             setRecentFeedback(recent);
             setLoading(false);
