@@ -46,17 +46,24 @@ function Students() {
   const loadStudents = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Timeout protection for maintenance/downtime
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out - Supabase may be under maintenance')), 15000)
+      );
+      const fetchPromise = supabase
         .from('students')
         .select('*')
         .eq('teacher_id', user!.id)
         .order('name');
+      
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (error) throw error;
       setStudents(data || []);
     } catch (error: any) {
       console.error('Error loading students:', error);
       notify.error(`Failed to load students: ${error.message || 'Unknown error'}`);
+      setStudents([]); // Clear to empty state instead of hanging
     } finally {
       setLoading(false);
     }
@@ -524,7 +531,13 @@ function Students() {
                           />
                         </svg>
                         <p className="text-gray-600 font-medium">No students added yet</p>
-                        <p className="text-sm text-gray-500 mt-1">Add your first student using the form above</p>
+                        <p className="text-sm text-gray-500 mt-1 mb-3">Add your first student using the form above</p>
+                        <button
+                          onClick={loadStudents}
+                          className="text-sm text-blue-600 hover:text-blue-700 underline"
+                        >
+                          Retry loading students
+                        </button>
                       </div>
                     </td>
                   </tr>

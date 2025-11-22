@@ -56,19 +56,34 @@ function Rubrics() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('rubrics')
-        .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
-        .eq('teacher_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) {
-        console.error(error);
-        notify.error('Failed to load rubrics');
-      } else {
-        setRubrics(data as RubricRow[]);
+      try {
+        setLoading(true);
+        // Timeout protection for maintenance/downtime
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timed out - Supabase may be under maintenance')), 15000)
+        );
+        const fetchPromise = supabase
+          .from('rubrics')
+          .select('id, name, subject, criteria, created_at, exam_board, template_id, version, cloned_from')
+          .eq('teacher_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+        
+        if (error) {
+          console.error(error);
+          notify.error('Failed to load rubrics');
+          setRubrics([]);
+        } else {
+          setRubrics(data as RubricRow[]);
+        }
+      } catch (error: any) {
+        console.error('Rubrics load error:', error);
+        notify.error(`Failed to load rubrics: ${error.message || 'Unknown error'}`);
+        setRubrics([]); // Clear to empty state instead of hanging
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [user]);
@@ -540,7 +555,15 @@ function Rubrics() {
             <div className="text-5xl mb-3">📋</div>
             <h4 className="text-lg font-semibold text-gray-900 mb-1">No rubrics yet</h4>
             <p className="text-gray-600 mb-4">Create your first rubric using the form above or import from a template.</p>
-            <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-blue-600 hover:underline">Jump to form</a>
+            <div className="space-x-3">
+              <a href="#" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="text-blue-600 hover:underline">Jump to form</a>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-sm text-blue-600 hover:text-blue-700 underline"
+              >
+                Retry loading
+              </button>
+            </div>
           </div>
         ) : groupView ? (
           <div className="space-y-6">
