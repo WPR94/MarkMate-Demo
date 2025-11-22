@@ -27,10 +27,10 @@ function Navbar() {
         {/* Mobile and Desktop Header */}
         <div className="flex items-center justify-between">
           {/* Logo */}
-+          <Link to="/dashboard" className="hover:opacity-90" aria-label="Simple RubriQ Home">
+          <Link to="/dashboard" className="hover:opacity-90" aria-label="Simple RubriQ Home">
             <span className="sr-only">Simple RubriQ</span>
-            <Logo className="h-8" />
-+          </Link>
+            <Logo className="h-8 sm:h-10 transition-transform hover:scale-105" />
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6">

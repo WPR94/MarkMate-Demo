@@ -173,7 +173,7 @@ function Auth() {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link to="/" className="inline-block">
-              <Logo className="h-10 mx-auto" />
+              <Logo className="h-8 sm:h-10 mx-auto transition-transform hover:scale-105" />
             </Link>
           </div>
 
