@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<import('@supabase/supabase-js').User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileHydrated, setProfileHydrated] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -150,8 +151,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
-          const profileData = await fetchOrCreateProfile(currentUser);
-          if (mounted) setProfile(profileData);
+          // Dedupe guard: ensure we only hydrate profile once during init
+          if (!profileHydrated) {
+            const profileData = await fetchOrCreateProfile(currentUser);
+            if (mounted) setProfile(profileData);
+            if (mounted) setProfileHydrated(true);
+          }
         } else {
           setProfile(null);
         }
@@ -171,10 +176,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        const profileData = await fetchOrCreateProfile(currentUser);
-        setProfile(profileData);
+        if (!profileHydrated) {
+          const profileData = await fetchOrCreateProfile(currentUser);
+          setProfile(profileData);
+          setProfileHydrated(true);
+        }
       } else {
         setProfile(null);
+        setProfileHydrated(false);
       }
     });
 
