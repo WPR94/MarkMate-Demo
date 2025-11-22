@@ -44,21 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return adminEmailSet.has(email.toLowerCase());
     };
 
-    const withTimeout = async <T,>(p: Promise<T>, ms = 5000, label = 'operation'): Promise<T> => {
-      let timer: any;
-      try {
-        const result = await Promise.race<T | '___TIMEOUT___'>([
-          p,
-          new Promise<'___TIMEOUT___'>(resolve => (timer = setTimeout(() => resolve('___TIMEOUT___'), ms))),
-        ]);
-        if (result === '___TIMEOUT___') {
-          throw new Error(`[timeout] ${label} exceeded ${ms}ms`);
-        }
-        return result as T;
-      } finally {
-        clearTimeout(timer);
-      }
-    };
+    // withTimeout no longer used for auth.getSession; rely on watchdog
 
     const fetchOrCreateProfile = async (currentUser: import('@supabase/supabase-js').User) => {
       try {
@@ -158,7 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
-        const { data } = await withTimeout(supabase.auth.getSession(), 5000, 'auth.getSession');
+        // Avoid aggressive timeouts here; rely on watchdog as a fallback
+        const { data } = await supabase.auth.getSession();
         if (!mounted) return;
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
@@ -166,6 +153,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profileData = await fetchOrCreateProfile(currentUser);
           if (mounted) setProfile(profileData);
         } else {
+          setProfile(null);
+        }
+      } catch (e) {
+        console.warn('[AuthContext] getSession failed; proceeding without session', e);
+        if (mounted) {
+          setUser(null);
           setProfile(null);
         }
       } finally {
