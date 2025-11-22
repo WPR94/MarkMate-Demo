@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,6 +36,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
   const cacheKey = user ? `dashboard:snapshot:${user.id}` : undefined;
+  const lastFetchRef = useRef<number>(0);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Onboarding tour
@@ -113,6 +114,16 @@ function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Invalidate cache and force refetch when returning to dashboard
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchRef.current;
+    // If we fetched recently (< 2s ago), skip; otherwise force fresh
+    if (timeSinceLastFetch > 2000) {
+      if (cacheKey) localStorage.removeItem(cacheKey);
+      setLoading(true);
+    }
+    lastFetchRef.current = now;
 
     const fetchDashboardData = async () => {
       try {
@@ -243,6 +254,20 @@ function Dashboard() {
     };
 
     fetchDashboardData();
+
+    // Subscribe to realtime feedback inserts to auto-refresh
+    const channel = supabase
+      .channel('dashboard-feedback-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'feedback' }, () => {
+        // Invalidate cache and refetch when new feedback is added
+        if (cacheKey) localStorage.removeItem(cacheKey);
+        fetchDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return (
